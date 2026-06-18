@@ -50,7 +50,7 @@ Commands are grouped by artifact type:
 ### From a NuGet feed
 
 ```
-dotnet tool install --global dvx --add-source <your-feed-url>
+dotnet tool install dvx.cli --global --add-source <your-feed-url>
 ```
 
 ### From source
@@ -58,7 +58,7 @@ dotnet tool install --global dvx --add-source <your-feed-url>
 ```
 cd src/dvx
 dotnet pack
-dotnet tool install --global --add-source ./bin/Debug dvx
+dotnet tool install dvx.cli --global --source ./bin/Debug dvx
 ```
 
 Verify the install:
