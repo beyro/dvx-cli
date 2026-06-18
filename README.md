@@ -99,13 +99,13 @@ This creates `dvx.json` in the current directory:
 **2. Reference the attributes package** in your plugin project:
 
 ```xml
-<PackageReference Include="beyro.PluginAttributes" Version="1.0.0" />
+<PackageReference Include="dvx.PluginAttributes" Version="1.0.0" />
 ```
 
 **3. Decorate a plugin class:**
 
 ```csharp
-using beyro.PluginAttributes;
+using dvx.PluginAttributes;
 
 [PluginStep("account", "Create", Stage.PostOperation)]
 public class AccountOnPostCreate : IPlugin
@@ -192,16 +192,16 @@ If no file is found, connection details must be supplied entirely via CLI option
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `defaultEnvironment` | | Name of the environment to use when `--env` is not passed on the command line |
-| `name` | ✓ (per env) | Environment alias used with `--env` |
-| `url` | ✓ (per env) | Dataverse org URL |
-| `clientId` | ✓ (per env) | App registration client ID |
-| `clientSecret` | ✓ (per env) | App registration secret |
-| `publisherPrefix` | when no solution given | Dataverse publisher customization prefix (e.g. `"beyro"`). Used to form the `pluginpackage` unique name (`{prefix}_{assemblyName}`) and to prefix folder-derived web-resource names. **Fallback only** — when a solution is provided, its publisher's prefix is used instead (and this value, if also set, is ignored with a warning). Can be supplied via `--publisher-prefix`. |
-| `solutionUniqueName` | | Unique name of the Dataverse solution to add deployed components (plugin steps / web resources) to. **Authoritative for the customization prefix**: when set, the prefix is read from this solution's publisher rather than `publisherPrefix`. Can be overridden per-command with `--solution-unique-name`. |
-| `webResources` | | Defaults for `webresource sync`: `folder`, `manifest`, and `publish` (default `true`). See [Web resources](#web-resources). |
+| Field | Required | Description                                                                                                                                                                                                                                                                                                                                                                    |
+|---|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `defaultEnvironment` | | Name of the environment to use when `--env` is not passed on the command line                                                                                                                                                                                                                                                                                                  |
+| `name` | ✓ (per env) | Environment alias used with `--env`                                                                                                                                                                                                                                                                                                                                            |
+| `url` | ✓ (per env) | Dataverse org URL                                                                                                                                                                                                                                                                                                                                                              |
+| `clientId` | ✓ (per env) | App registration client ID                                                                                                                                                                                                                                                                                                                                                     |
+| `clientSecret` | ✓ (per env) | App registration secret                                                                                                                                                                                                                                                                                                                                                        |
+| `publisherPrefix` | when no solution given | Dataverse publisher customization prefix (e.g. `"pub"`). Used to form the `pluginpackage` unique name (`{prefix}_{assemblyName}`) and to prefix folder-derived web-resource names. **Fallback only** — when a solution is provided, its publisher's prefix is used instead (and this value, if also set, is ignored with a warning). Can be supplied via `--publisher-prefix`. |
+| `solutionUniqueName` | | Unique name of the Dataverse solution to add deployed components (plugin steps / web resources) to. **Authoritative for the customization prefix**: when set, the prefix is read from this solution's publisher rather than `publisherPrefix`. Can be overridden per-command with `--solution-unique-name`.                                                                    |
+| `webResources` | | Defaults for `webresource sync`: `folder`, `manifest`, and `publish` (default `true`). See [Web resources](#web-resources).                                                                                                                                                                                                                                                    |
 
 ### Connection value resolution
 
@@ -238,7 +238,7 @@ dvx plugin sync --project ./src/MyPlugin/MyPlugin.csproj
 
 ## Decorating plugins with attributes
 
-Add the `beyro.PluginAttributes` NuGet package to your plugin project and apply
+Add the `dvx.PluginAttributes` NuGet package to your plugin project and apply
 `[PluginStep]` to each plugin class.
 
 ### Basic step
@@ -475,7 +475,7 @@ dvx plugin adopt --project <path> [options]
 1. Resolves the `pluginassembly` in Dataverse by name.
 2. Reads every step on that assembly's plugin types, plus their images and unsecure configuration.
 3. Matches each step to its class by fully-qualified type name and inserts a `[PluginStep(...)]`
-   attribute (adding `using beyro.PluginAttributes;` where needed).
+   attribute (adding `using dvx.PluginAttributes;` where needed).
 4. Skips classes that already carry an equivalent attribute, and reports any Dataverse step whose
    class it could not find in the project.
 
@@ -893,10 +893,10 @@ dvx reads and writes the following Dataverse tables:
 ```
 PluginRegistrationTool/
 ├── src/
-│   ├── beyro.PluginAttributes/        # netstandard2.0 NuGet package
+│   ├── dvx.PluginAttributes/        # netstandard2.0 NuGet package
 │   │   ├── PluginStepAttribute.cs         # [PluginStep] attribute with all config
 │   │   ├── Stage.cs                       # PreValidation / PreOperation / PostOperation
-│   │   └── beyro.PluginAttributes.csproj
+│   │   └── dvx.PluginAttributes.csproj
 │   ├── dvx/                          # net8 CLI tool
 │   │   ├── Commands/
 │   │   │   ├── DeployCommand.cs           # dvx plugin deploy
