@@ -29,6 +29,8 @@ namespace dvx.Services
 
             var messageNameById  = meta.MessageNameById();
             var filterEntityById = meta.FilterEntityById();
+            var customApiMessageIds    = meta.CustomApiMessageIds();
+            var customApiPluginTypeIds = meta.CustomApiPluginTypeIds();
 
             foreach (var step in LoadSteps(typeNameById.Keys))
             {
@@ -54,12 +56,30 @@ namespace dvx.Services
                     ? e
                     : string.Empty;
 
+                var stage = step.GetAttributeValue<OptionSetValue>("stage")?.Value ?? 0;
+
+                // Custom API plugins are not event plugins: their main operation runs at stage 30,
+                // their steps sit on the Custom API message, and their implementation type is
+                // referenced by customapi.plugintypeid. Skip them and record the class so adopt can
+                // mark it [CustomApi] instead of scaffolding [PluginStep].
+                if (stage == 30
+                    || customApiMessageIds.Contains(msgRef.Id)
+                    || customApiPluginTypeIds.Contains(typeRef.Id))
+                {
+                    RecordCustomApiType(result, typeName);
+                    if (verbose)
+                        logger.LogInformation(
+                            "Skipping step {Name} on {Type} — Custom API (not an event plugin).",
+                            stepName, typeName);
+                    continue;
+                }
+
                 var def = new PluginStepDefinition
                 {
                     TypeFullName        = typeName,
                     Entity              = entity,
                     Message             = message,
-                    Stage               = step.GetAttributeValue<OptionSetValue>("stage")?.Value ?? 0,
+                    Stage               = stage,
                     Mode                = step.GetAttributeValue<OptionSetValue>("mode")?.Value ?? 0,
                     ExecutionOrder      = step.GetAttributeValue<int>("rank"),
                     Description         = NullIfEmpty(step.GetAttributeValue<string>("description")),
@@ -136,5 +156,11 @@ namespace dvx.Services
 
         private static string? NullIfEmpty(string? value)
             => string.IsNullOrEmpty(value) ? null : value;
+
+        private static void RecordCustomApiType(ImportResult result, string typeName)
+        {
+            if (!result.CustomApiTypes.Contains(typeName))
+                result.CustomApiTypes.Add(typeName);
+        }
     }
 }

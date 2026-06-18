@@ -64,6 +64,8 @@ namespace dvx.Commands
                     var importer     = new StepImporter(svc, loggerFactory.CreateLogger<StepImporter>());
                     var importResult = importer.Import(assemblyId, isVerbose);
                     Out.Info($"Found {importResult.Definitions.Count} step(s) to adopt.");
+                    if (importResult.CustomApiTypes.Count > 0)
+                        Out.Info($"Skipping {importResult.CustomApiTypes.Count} Custom API implementation(s) — will mark [CustomApi].");
                     foreach (var w in importResult.Warnings) Out.Warn(w);
 
                     if (isDryRun)
@@ -71,7 +73,8 @@ namespace dvx.Commands
 
                     Out.Step("Writing", $"[PluginStep] attributes into {Path.GetFileName(resolvedProject)}");
                     var writer      = new AttributeWriter(loggerFactory.CreateLogger<AttributeWriter>());
-                    var writeResult = writer.Write(resolvedProject, importResult.Definitions, isDryRun, isVerbose);
+                    var writeResult = writer.Write(
+                        resolvedProject, importResult.Definitions, isDryRun, isVerbose, importResult.CustomApiTypes);
 
                     foreach (var line in writeResult.Planned)        Out.SubStep(line);
                     foreach (var t in writeResult.UnmatchedTypes)    Out.Warn($"No source class found for '{t}' — skipped.");
@@ -80,7 +83,8 @@ namespace dvx.Commands
                     Out.Info("");
                     Out.Success(isDryRun ? "Would adopt:" : "Adopted:",
                         $"{writeResult.Added} attribute(s) across {writeResult.FilesChanged.Count} file(s); " +
-                        $"{writeResult.SkippedExisting} already present.");
+                        $"{writeResult.SkippedExisting} already present; " +
+                        $"{writeResult.CustomApisMarked} Custom API class(es) marked [CustomApi].");
 
                     if (!isDryRun && writeResult.Added > 0)
                         Out.Info("Next: review the changes (git diff), then run 'dvx sync' " +

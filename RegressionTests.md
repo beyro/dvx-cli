@@ -99,6 +99,7 @@ Run against a real Dataverse environment. Mark each test **PASS / FAIL / SKIP** 
 | SYN-11 | Entity+message not filterable | Use a combination that has no `sdkmessagefilter` record in Dataverse (with an `Entity` set). | Warning: "No sdkmessagefilter for entity … + message …". Step skipped. |
 | SYN-14 | Entity-less (global) message | Register `[PluginStep(Message = "Associate", Stage = Stage.PostOperation)]` (no `Entity`). Run `sync`. | Step **created** with `sdkmessagefilterid` empty. No "No sdkmessagefilter" warning. Verify in PRT the step targets the Associate message with no primary entity. |
 | SYN-13 | Partial failure — some steps fail | Simulate by revoking write access to one entity. | Exit 2. Successful steps show in Created/Updated counts. Failed step shown in Errors. |
+| SYN-15 | `[CustomApi]` class skipped silently | Add a class implementing `IPlugin` marked `[CustomApi]` (a Custom API implementation, no `[PluginStep]`). Run `sync` (or `register`). | The `[CustomApi]` class is skipped with **no** "no `[PluginStep]`" warning (contrast SYN-07). All other steps processed normally. Exit 0. |
 
 ---
 
@@ -119,6 +120,9 @@ Run against a real Dataverse environment. Mark each test **PASS / FAIL / SKIP** 
 | ADO-09 | Assembly-name override | Run `adopt --assembly-name <name>` where the Dataverse assembly name differs from the project name. | Tool reads steps from the named assembly. |
 | ADO-10 | Assembly not found | Run `adopt --assembly-name does-not-exist`. | Exit 1. Error message names the missing assembly. |
 | ADO-11 | Entity-less (global) message adopted | Adopt an assembly with a hand-registered `Associate` / `Disassociate` step (no `sdkmessagefilter`). | Generated attribute has an empty entity, e.g. `[PluginStep("", "Associate", Stage.PostOperation)]`. **No** "no entity / not representable" warning. Step is adopted, not skipped. |
+| ADO-12 | Custom API not scaffolded; class marked `[CustomApi]` | Adopt an assembly that backs a **Custom API** (plugin bound via `customapi.plugintypeid`; its step is registered at stage 30 / Main Operation). | **No** `[PluginStep]` is written for the Custom API class; the class is marked `[CustomApi]` instead (with `using dvx.PluginAttributes;`). Summary reports `N Custom API class(es) marked [CustomApi]`. Standard event-plugin steps in the same assembly are still adopted. Exit 0. |
+| ADO-13 | Custom API dry run | Run the ADO-12 scenario with `--dry-run`. | Planned output shows `… ← [CustomApi]` for the Custom API class and **no** stage-30 `[PluginStep]` / `(Stage)30`. No source files modified (`git status` clean). |
+| ADO-14 | Custom API marker idempotent | Run `adopt` twice against the Custom API assembly. | Second run does not add a duplicate `[CustomApi]` (reported as already present / skipped). No further file edits. |
 
 ---
 

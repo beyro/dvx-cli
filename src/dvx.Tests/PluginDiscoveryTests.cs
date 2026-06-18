@@ -134,6 +134,21 @@ namespace dvx.Tests.Fixtures
     {
         public void Execute(IServiceProvider serviceProvider) { }
     }
+
+    // Custom API implementation — marked [CustomApi], no [PluginStep]. Must be skipped silently.
+    [CustomApi]
+    public class TestPluginCustomApi : IPlugin
+    {
+        public void Execute(IServiceProvider serviceProvider) { }
+    }
+
+    // [CustomApi] takes precedence over [PluginStep] on the same class — must still be excluded.
+    [CustomApi]
+    [PluginStep("account", "Create", Stage.PostOperation)]
+    public class TestPluginCustomApiWithStep : IPlugin
+    {
+        public void Execute(IServiceProvider serviceProvider) { }
+    }
 }
 
 namespace dvx.Tests
@@ -424,6 +439,22 @@ namespace dvx.Tests
         {
             var defs = Discover();
             defs.ShouldNotContain(d => d.TypeFullName!.EndsWith(nameof(NotAPlugin)));
+        }
+
+        [Fact]
+        public void CustomApiClass_ExcludedFromResults()
+        {
+            var defs = Discover();
+            defs.ShouldNotContain(d => d.TypeFullName!.EndsWith(nameof(TestPluginCustomApi)));
+        }
+
+        [Fact]
+        public void CustomApiClass_WithPluginStep_ExcludedFromResults()
+        {
+            // [CustomApi] marks the class as a Custom API implementation, so it must be skipped
+            // even when a [PluginStep] attribute is also present.
+            var defs = Discover();
+            defs.ShouldNotContain(d => d.TypeFullName!.EndsWith(nameof(TestPluginCustomApiWithStep)));
         }
     }
 }

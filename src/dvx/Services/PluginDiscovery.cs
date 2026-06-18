@@ -11,6 +11,7 @@ namespace dvx.Services
     {
         private const string PluginInterfaceFullName = "Microsoft.Xrm.Sdk.IPlugin";
         private const string PluginStepAttrFullName  = "dvx.PluginAttributes.PluginStepAttribute";
+        private const string CustomApiAttrFullName   = "dvx.PluginAttributes.CustomApiAttribute";
 
         public List<PluginStepDefinition> Discover(string dllPath, bool verbose = false)
         {
@@ -49,6 +50,23 @@ namespace dvx.Services
                     continue;
 
                 var stepAttrs = GetPluginStepAttributes(type);
+                // Skip Custom APIs — [CustomApi] takes precedence over any [PluginStep].
+                if (HasCustomApiAttribute(type))
+                {
+                    if (verbose)
+                    {
+                        Out.Dim($"  Skipping {type.FullName} — marked [CustomApi] (not an event plugin)");
+                    }
+
+                    if (stepAttrs.Count > 0)
+                    {
+                        Out.Warn(
+                            $"  {type.FullName} - has [CustomApi] AND [PluginStep] attributes. It should have only one or the other");
+                    }
+
+                    continue;
+                }
+                
                 if (stepAttrs.Count == 0)
                 {
                     logger.LogWarning(
@@ -147,6 +165,10 @@ namespace dvx.Services
             => type.GetCustomAttributesData()
                    .Where(attr => attr.AttributeType.FullName == PluginStepAttrFullName)
                    .ToList();
+
+        private static bool HasCustomApiAttribute(Type type)
+            => type.GetCustomAttributesData()
+                   .Any(attr => attr.AttributeType.FullName == CustomApiAttrFullName);
 
         private static PluginStepDefinition BuildDefinition(
             string typeFullName, CustomAttributeData attr, bool verbose)

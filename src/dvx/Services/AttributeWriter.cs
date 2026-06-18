@@ -22,7 +22,8 @@ namespace dvx.Services
             string projectPath,
             IReadOnlyList<PluginStepDefinition> definitions,
             bool dryRun,
-            bool verbose = false)
+            bool verbose = false,
+            IReadOnlyCollection<string>? customApiTypeNames = null)
         {
             var result     = new AttributeWriteResult();
             var projectDir  = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
@@ -91,6 +92,30 @@ namespace dvx.Services
                 var indent = LineIndent(text, target.SpanStart);
                 var insert = string.Concat(attrs.Select(a => $"[{a}]{nl}{indent}"));
                 AddEdit(edits, file, new Insertion(target.SpanStart, insert, IsUsing: false));
+            }
+
+            // ── Phase B1: [CustomApi] markers for Custom API implementation classes ────
+            foreach (var typeName in (customApiTypeNames ?? Array.Empty<string>())
+                         .Distinct(StringComparer.Ordinal))
+            {
+                if (!classIndex.TryGetValue(typeName, out var locations))
+                {
+                    result.UnmatchedTypes.Add(typeName);
+                    continue;
+                }
+
+                if (locations.Any(HasCustomApiAttribute))
+                    continue; // already marked — idempotent
+
+                var target = ChooseTarget(locations);
+                var file   = target.SyntaxTree.FilePath;
+                var text   = fileText[file];
+                var nl     = NewLine(text);
+                var indent = LineIndent(text, target.SpanStart);
+
+                AddEdit(edits, file, new Insertion(target.SpanStart, $"[CustomApi]{nl}{indent}", IsUsing: false));
+                result.CustomApisMarked++;
+                result.Planned.Add($"{Rel(file, projectDir)}: {typeName} ← [CustomApi]");
             }
 
             // ── Phase B2: ensure the using directive in each touched file ──────────────
@@ -197,6 +222,16 @@ namespace dvx.Services
             name is "PluginStep" or "PluginStepAttribute" ||
             name.EndsWith(".PluginStep", StringComparison.Ordinal) ||
             name.EndsWith(".PluginStepAttribute", StringComparison.Ordinal);
+
+        private static bool HasCustomApiAttribute(ClassDeclarationSyntax cls)
+            => cls.AttributeLists
+                  .SelectMany(l => l.Attributes)
+                  .Any(a => IsCustomApiName(a.Name.ToString()));
+
+        private static bool IsCustomApiName(string name) =>
+            name is "CustomApi" or "CustomApiAttribute" ||
+            name.EndsWith(".CustomApi", StringComparison.Ordinal) ||
+            name.EndsWith(".CustomApiAttribute", StringComparison.Ordinal);
 
         private static (string entity, string message, int stage)? ReadStepKey(AttributeSyntax attr)
         {
