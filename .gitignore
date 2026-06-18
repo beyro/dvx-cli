@@ -1,0 +1,37 @@
+# Build output
+bin/
+obj/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+
+# User-specific files
+*.user
+*.suo
+.vs/
+.vscode/
+
+# Rider
+.idea/
+.run/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+.env
+
+# Claude
+.claude/settings.local.json
+.claude/worktrees/
+
+# Crash logs
+*.stackdump
+
+# Test results
+test-results/
+
+# NuGet configuration
+[Nn]u[Gg]et.[Cc]onfig

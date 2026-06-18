@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dvx</ToolCommandName>
+    <PackageId>dvx</PackageId>
+    <Version>1.6.0</Version>
+    <Authors>Byron Matus</Authors>
+    <Description>CLI for deploying code-first Dataverse / Power Platform artifacts — plugin assemblies and web resources.</Description>
+    <LangVersion>default</LangVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Title>dvx Dataverse Extensions</Title>
+    <Company>Matus Tech</Company>
+    <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
+    <PackageIcon>package-icon.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>dvx.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
+    <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.1.*" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dvx.PluginAttributes\dvx.PluginAttributes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\assets\package-icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+      <Link>package-icon.png</Link>
+    </None>
+  </ItemGroup>
+</Project>

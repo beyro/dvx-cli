@@ -1,0 +1,70 @@
+# Example pipeline to use in Azure DevOps to sync plugins with the dvx tool
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: YourPool
+
+variables:
+  - group: 'Your Variable Group'  # supplies DevApplicationId, DevSecret
+
+  - name: BuildConfiguration
+    value: 'Release'
+
+  # Dataverse solution name to add plugin steps to
+  - name: SolutionUniqueName
+    value: 'pub'
+
+  # Path to the plugin .csproj — dvx runs 'dotnet build' on this directly.
+  - name: PluginProject
+    value: 'YourNameSpace.Plugins/Plugins.csproj'
+
+steps:
+  - checkout: self
+    clean: true
+    persistCredentials: true
+
+  # ── NuGet auth ─────────────────────────────────────────────────────────────
+  - task: NuGetToolInstaller@1
+    displayName: 'Use NuGet'
+
+  - task: NuGetAuthenticate@1
+    displayName: 'Authenticate to Azure Artifacts' # assuming dvx package is in your own feed
+
+  # ── Install dvx ───────────────────────────────────────────────────────
+  - task: PowerShell@2
+    displayName: 'Install dvx global tool'
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Installs from the private Azure Artifacts feed already authenticated above.
+        # The feed URL is read from CICD/nuget.config — no extra --add-source needed
+        # as long as dvx is published to that feed.
+        dotnet tool install --global dvx
+        if ($LASTEXITCODE -ne 0) {
+          # Tool may already be installed from a previous run — attempt update instead.
+          dotnet tool update --global dvx
+        }
+
+  # ── dvx plugin sync ──────────────────────────────────────────────────────────
+  # Runs dotnet build, plugin package upload, and full step registration in one step.
+  # All connection values are passed directly — no config file is written to disk.
+  # The client secret is injected via environment variable so it is never visible
+  # in process arguments or pipeline logs.
+  - task: PowerShell@2
+    displayName: 'dvx plugin sync → Dev'
+    env:
+      DVX_CLIENT_SECRET: $(DevSecret)
+    inputs:
+      targetType: 'inline'
+      script: |
+        dvx plugin sync `
+          --url "$(DEV_Environment)" `
+          --client-id "$(DevApplicationId)" `
+          --solution-unique-name "$(PublisherPrefix)" `
+          --project "$(PluginProject)" `
+          --verbose
+
+        exit $LASTEXITCODE   # propagate dvx exit code (0=ok, 1=fatal, 2=partial)

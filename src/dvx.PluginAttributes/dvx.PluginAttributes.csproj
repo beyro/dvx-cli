@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>dvx.PluginAttributes</PackageId>
+    <Version>1.1.2</Version>
+    <Authors>Byron Matus</Authors>
+    <Description>Attributes for declarative Dataverse plugin step registration using the dvx cli</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Nullable>enable</Nullable>
+    <LangVersion>9</LangVersion>
+    <TargetFrameworks>net462;net471;net9.0</TargetFrameworks>
+    <Title>dvx.PluginAttributes</Title>
+    <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
+    <PackageIcon>package-icon.png</PackageIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\assets\package-icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+      <Link>package-icon.png</Link>
+    </None>
+  </ItemGroup>
+</Project>
