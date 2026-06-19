@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dvx</ToolCommandName>
     <PackageId>dvx.cli</PackageId>
-    <Version>1.6.1</Version>
+    <Version>1.6.2</Version>
     <Authors>Byron Matus</Authors>
     <Description>CLI for deploying code-first Dataverse / Power Platform artifacts — plugin assemblies and web resources.</Description>
     <LangVersion>default</LangVersion>
@@ -16,6 +16,7 @@
     <Company>Matus Tech</Company>
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
