@@ -4,6 +4,23 @@ using Microsoft.Xrm.Sdk.Query;
 namespace dvx.Services
 {
     /// <summary>
+    /// Represents a composite key that combines a Message ID and an Entity Logical Name.
+    /// This key is used for uniquely identifying SDK message filters associated with
+    /// specific entities.
+    /// </summary>
+    internal readonly record struct MessageEntityKey
+    {
+        public Guid MessageId { get; }
+        public string EntityLogicalName { get; }
+
+        public MessageEntityKey(Guid messageId, string entityLogicalName)
+        {
+            MessageId = messageId;
+            EntityLogicalName = entityLogicalName.ToLowerInvariant();
+        }
+    }
+
+    /// <summary>
     /// Loads SDK metadata lookups (messages, message filters, plugin types) shared by step
     /// registration (forward: name → id) and adoption (reverse: id → name). Raw message and
     /// filter records are fetched once and cached per instance.
@@ -11,7 +28,6 @@ namespace dvx.Services
     internal class SdkMetadata(IOrganizationService svc)
     {
         private List<Entity>? _messages;
-        private List<Entity>? _filters;
         private List<Entity>? _customApis;
         private Guid? _systemUserId;
 
@@ -37,30 +53,43 @@ namespace dvx.Services
             return _systemUserId.Value;
         }
 
-        private IReadOnlyList<Entity> Messages =>
+        /// <summary>
+        /// Gets a collection of SDK messages cached within the instance.
+        /// </summary>
+        /// <remarks>
+        /// SDK messages represent operations or actions that can be performed using the system,
+        /// such as Create, Update, or Delete. The collection is retrieved from the CRM organization
+        /// service and includes both the unique identifiers (GUIDs) and names of the SDK messages.
+        /// </remarks>
+        private IReadOnlyList<Entity> SdkMessages =>
             _messages ??= svc.RetrieveMultiple(new QueryExpression("sdkmessage")
             {
                 ColumnSet = new ColumnSet("sdkmessageid", "name")
             }).Entities.ToList();
 
-        private IReadOnlyList<Entity> Filters =>
-            _filters ??= svc.RetrieveMultiple(new QueryExpression("sdkmessagefilter")
-            {
-                ColumnSet = new ColumnSet("sdkmessagefilterid", "sdkmessageid",
-                    "primaryobjecttypecode", "iscustomprocessingstepallowed")
-            }).Entities.ToList();
-
+        /// <summary>
+        /// Gets a collection of Custom API entities cached within the instance.
+        /// </summary>
+        /// <remarks>
+        /// The Custom API entities represent custom-defined operations in the system.
+        /// These entities include attributes such as unique identifiers, unique names,
+        /// associated plugin types, and SDK messages. The data is retrieved from the
+        /// CRM organization service and cached for efficient access.
+        /// </remarks>
         private IReadOnlyList<Entity> CustomApis =>
             _customApis ??= svc.RetrieveMultiple(new QueryExpression("customapi")
             {
                 ColumnSet = new ColumnSet("customapiid", "uniquename", "plugintypeid", "sdkmessageid")
             }).Entities.ToList();
 
-        /// <summary>Message name → id (case-insensitive).</summary>
+        /// <summary>
+        /// Maps message names to their corresponding GUIDs.
+        /// </summary>
+        /// <returns>A dictionary where keys are sdk message names (case-insensitive) and values are their respective GUIDs.</returns>
         public Dictionary<string, Guid> MessageIdByName()
         {
             var map = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-            foreach (var e in Messages)
+            foreach (var e in SdkMessages)
             {
                 var name = e.GetAttributeValue<string>("name");
                 if (name is not null) map[name] = e.Id;
@@ -68,11 +97,14 @@ namespace dvx.Services
             return map;
         }
 
-        /// <summary>Message id → name.</summary>
+        /// <summary>
+        /// Maps message GUIDs to their corresponding names.
+        /// </summary>
+        /// <returns>A dictionary where keys are message GUIDs and values are their case-sensitive names.</returns>
         public Dictionary<Guid, string> MessageNameById()
         {
             var map = new Dictionary<Guid, string>();
-            foreach (var e in Messages)
+            foreach (var e in SdkMessages)
             {
                 var name = e.GetAttributeValue<string>("name");
                 if (name is not null) map[e.Id] = name;
@@ -80,30 +112,65 @@ namespace dvx.Services
             return map;
         }
 
-        /// <summary>(messageId, entity logical name) → filterId. First entry wins on duplicates.</summary>
-        public Dictionary<(Guid, string), Guid> FilterIdByKey()
+        /// <summary>
+        /// Retrieves a mapping of SDK message filters keyed by <see cref="MessageEntityKey"/>
+        /// (the message ID and entity logical name), where the value is the SDK message filter ID.
+        /// </summary>
+        /// <param name="entityNames">A collection of entity logical names to filter SDK message filters by.</param>
+        /// <returns>
+        /// A dictionary where the key is a <see cref="MessageEntityKey"/> of the SDK message ID and entity
+        /// logical name, and the value is the SDK message filter ID.
+        /// </returns>
+        public Dictionary<MessageEntityKey, Guid> SdkFilterIdsByEntityNames(IReadOnlyCollection<string> entityNames)
         {
-            var map = new Dictionary<(Guid, string), Guid>();
-            foreach (var e in Filters)
+            var map = new Dictionary<MessageEntityKey, Guid>();
+            if (entityNames.Count == 0) return map;
+
+            var query = new QueryExpression("sdkmessagefilter")
+            {
+                ColumnSet = new ColumnSet("sdkmessagefilterid", "sdkmessageid", "primaryobjecttypecode"),
+                Criteria  = new FilterExpression()
+            };
+            query.Criteria.AddCondition("primaryobjecttypecode", ConditionOperator.In, entityNames.Cast<object>().ToArray());
+
+            foreach (var e in svc.RetrieveMultiple(query).Entities)
             {
                 var msgRef = e.GetAttributeValue<EntityReference>("sdkmessageid");
                 if (msgRef is null) continue;
-                var entity = (e.GetAttributeValue<string>("primaryobjecttypecode") ?? string.Empty).ToLowerInvariant();
-                map.TryAdd((msgRef.Id, entity), e.Id);
+                var entity = e.GetAttributeValue<string>("primaryobjecttypecode") ?? string.Empty;
+                map.TryAdd(new MessageEntityKey(msgRef.Id, entity), e.Id);
             }
             return map;
         }
 
-        /// <summary>filterId → entity logical name (primaryobjecttypecode).</summary>
-        public Dictionary<Guid, string> FilterEntityById()
+        /// <summary>
+        /// Retrieves a mapping between SDK message filter IDs and their associated primary object type codes.
+        /// </summary>
+        /// <param name="filterIds">A collection of GUIDs representing the SDK message filter IDs to query.</param>
+        /// <returns>A dictionary where keys are the SDK message filter IDs and values are their corresponding primary object type codes.</returns>
+        public Dictionary<Guid, string> FilterEntityById(IReadOnlyCollection<Guid> filterIds)
         {
             var map = new Dictionary<Guid, string>();
-            foreach (var e in Filters)
+            if (filterIds.Count == 0) return map;
+
+            var query = new QueryExpression("sdkmessagefilter")
+            {
+                ColumnSet = new ColumnSet("sdkmessagefilterid", "primaryobjecttypecode"),
+                Criteria  = new FilterExpression()
+            };
+            query.Criteria.AddCondition("sdkmessagefilterid", ConditionOperator.In, filterIds.Cast<object>().ToArray());
+
+            foreach (var e in svc.RetrieveMultiple(query).Entities)
                 map[e.Id] = e.GetAttributeValue<string>("primaryobjecttypecode") ?? string.Empty;
+
             return map;
         }
 
-        /// <summary>plugintype typename → id for the given assembly (case-insensitive).</summary>
+        /// <summary>
+        /// Retrieves a dictionary mapping plugin type names to their corresponding GUIDs within a specified plugin assembly.
+        /// </summary>
+        /// <param name="assemblyId">The unique identifier of the plugin assembly.</param>
+        /// <returns>A dictionary where keys are plugin type names (case-insensitive) and values are their respective GUIDs.</returns>
         public Dictionary<string, Guid> PluginTypeIdByName(Guid assemblyId)
         {
             var map = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
@@ -112,10 +179,14 @@ namespace dvx.Services
                 var name = e.GetAttributeValue<string>("typename");
                 if (name is not null) map[name] = e.Id;
             }
+
             return map;
         }
 
-        /// <summary>plugintype ids referenced by a Custom API as its main-operation implementation.</summary>
+        /// <summary>
+        /// Retrieves the unique identifiers of plugin types associated with custom APIs in the system.
+        /// </summary>
+        /// <returns>A set of GUIDs representing the plugin types linked to custom APIs.</returns>
         public HashSet<Guid> CustomApiPluginTypeIds()
         {
             var set = new HashSet<Guid>();
@@ -127,7 +198,10 @@ namespace dvx.Services
             return set;
         }
 
-        /// <summary>sdkmessage ids of the messages created for Custom APIs.</summary>
+        /// <summary>
+        /// Retrieves the set of GUIDs corresponding to SDK messages associated with custom APIs.
+        /// </summary>
+        /// <returns>A hash set containing the unique identifiers for SDK messages linked to custom APIs.</returns>
         public HashSet<Guid> CustomApiMessageIds()
         {
             var set = new HashSet<Guid>();
@@ -139,7 +213,11 @@ namespace dvx.Services
             return set;
         }
 
-        /// <summary>plugintype id → typename for the given assembly.</summary>
+        /// <summary>
+        /// Retrieves a dictionary mapping plugin type IDs to their respective type names for a given assembly.
+        /// </summary>
+        /// <param name="assemblyId">The unique identifier of the assembly for which plugin type records are being retrieved.</param>
+        /// <returns>A dictionary where keys are plugin type GUIDs and values are their associated type names.</returns>
         public Dictionary<Guid, string> PluginTypeNameById(Guid assemblyId)
         {
             var map = new Dictionary<Guid, string>();
@@ -151,6 +229,11 @@ namespace dvx.Services
             return map;
         }
 
+        /// <summary>
+        /// Retrieves a list of plugin types associated with a specific plugin assembly.
+        /// </summary>
+        /// <param name="assemblyId">The unique identifier of the plugin assembly.</param>
+        /// <returns>A list of entities representing plugin types, including their IDs and type names.</returns>
         private List<Entity> PluginTypes(Guid assemblyId)
         {
             var query = new QueryExpression("plugintype")
