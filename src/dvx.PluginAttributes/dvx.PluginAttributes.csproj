@@ -11,6 +11,7 @@
     <Title>dvx.PluginAttributes</Title>
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\assets\package-icon.png">

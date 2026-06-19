@@ -16,6 +16,7 @@
     <Company>Matus Tech</Company>
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
