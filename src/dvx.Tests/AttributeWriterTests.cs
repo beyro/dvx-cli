@@ -21,7 +21,8 @@ namespace dvx.Tests
         private static (AttributeWriteResult Result, Dictionary<string, string> Files) Run(
             Dictionary<string, string> sources,
             IReadOnlyList<PluginStepDefinition> defs,
-            bool dryRun = false)
+            bool dryRun = false,
+            IReadOnlyCollection<string>? customApiTypeNames = null)
         {
             var dir = Path.Combine(Path.GetTempPath(), "dvx-aw-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
@@ -31,7 +32,8 @@ namespace dvx.Tests
                     File.WriteAllText(Path.Combine(dir, name), content);
 
                 var writer = new AttributeWriter(NullLogger<AttributeWriter>.Instance);
-                var result = writer.Write(Path.Combine(dir, "Test.csproj"), defs, dryRun);
+                var result = writer.Write(Path.Combine(dir, "Test.csproj"), defs, dryRun,
+                    customApiTypeNames: customApiTypeNames);
 
                 var outFiles = sources.Keys.ToDictionary(
                     n => n,
@@ -147,6 +149,44 @@ namespace dvx.Tests
             result.Added.ShouldBe(1);
             result.FilesChanged.ShouldHaveSingleItem();
             files["Account.cs"].ShouldBe(SimpleClass); // unchanged on disk
+        }
+
+        // ── [CustomApi] markers ────────────────────────────────────────────────────
+
+        [Fact]
+        public void MarksCustomApiClass_WithAttributeAndUsing()
+        {
+            var (result, files) = Run(
+                new() { ["Account.cs"] = SimpleClass },
+                Array.Empty<PluginStepDefinition>(),
+                customApiTypeNames: new[] { "My.Plugins.AccountCreate" });
+
+            result.CustomApisMarked.ShouldBe(1);
+            result.FilesChanged.ShouldHaveSingleItem();
+
+            var text = files["Account.cs"];
+            text.ShouldContain("using Microsoft.Xrm.Sdk;\nusing dvx.PluginAttributes;\n");
+            text.ShouldContain("    [CustomApi]\n    public class AccountCreate");
+        }
+
+        [Fact]
+        public void CustomApiMarker_Idempotent_WhenAlreadyPresent()
+        {
+            var src =
+                "using Microsoft.Xrm.Sdk;\nusing dvx.PluginAttributes;\n\n" +
+                "namespace My.Plugins\n{\n" +
+                "    [CustomApi]\n" +
+                "    public class AccountCreate : IPlugin\n    {\n" +
+                "        public void Execute(IServiceProvider sp) { }\n    }\n}\n";
+
+            var (result, files) = Run(
+                new() { ["Account.cs"] = src },
+                Array.Empty<PluginStepDefinition>(),
+                customApiTypeNames: new[] { "My.Plugins.AccountCreate" });
+
+            result.CustomApisMarked.ShouldBe(0);
+            result.FilesChanged.ShouldBeEmpty();
+            files["Account.cs"].ShouldBe(src.Replace("\r\n", "\n"));
         }
 
         // ── RenderAttribute ──────────────────────────────────────────────────────

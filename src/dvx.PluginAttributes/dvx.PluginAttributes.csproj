@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageId>dvx.PluginAttributes</PackageId>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <Authors>Byron Matus</Authors>
     <Description>Attributes for declarative Dataverse plugin step registration using the dvx cli</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

@@ -28,9 +28,13 @@ namespace dvx.Tests
             Entity? step = null,
             EntityCollection? images = null,
             string entity = "account",
-            string message = "Create")
+            string message = "Create",
+            EntityCollection? customApis = null)
         {
             var svc = Substitute.For<IOrganizationService>();
+
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "customapi"))
+               .Returns(customApis ?? new EntityCollection());
 
             svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "plugintype"))
                .Returns(new EntityCollection(new List<Entity>
@@ -153,6 +157,55 @@ namespace dvx.Tests
             def.Entity.ShouldBe(string.Empty);
             def.Message.ShouldBe("Associate");
             result.Warnings.ShouldBeEmpty();
+        }
+
+        [Fact]
+        public void Import_MainOperationStep_Stage30_SkippedAsCustomApi()
+        {
+            // Custom API plugins register at stage 30 (Main Operation) — never an event plugin.
+            var step = FullStep();
+            step["stage"] = new OptionSetValue(30);
+
+            var result = Importer(BuildSvc(step: step)).Import(AssemblyId);
+
+            result.Definitions.ShouldBeEmpty();
+            result.CustomApiTypes.ShouldContain(TypeName);
+        }
+
+        [Fact]
+        public void Import_StepOnCustomApiMessage_Skipped()
+        {
+            // A step whose message is a Custom API message is not an event plugin step.
+            var customApis = new EntityCollection(new List<Entity>
+            {
+                new("customapi", Guid.NewGuid())
+                {
+                    ["sdkmessageid"] = new EntityReference("sdkmessage", MsgId)
+                }
+            });
+
+            var result = Importer(BuildSvc(step: FullStep(), customApis: customApis)).Import(AssemblyId);
+
+            result.Definitions.ShouldBeEmpty();
+            result.CustomApiTypes.ShouldContain(TypeName);
+        }
+
+        [Fact]
+        public void Import_StepForCustomApiPluginType_Skipped()
+        {
+            // A step whose plugin type backs a Custom API (customapi.plugintypeid) is skipped.
+            var customApis = new EntityCollection(new List<Entity>
+            {
+                new("customapi", Guid.NewGuid())
+                {
+                    ["plugintypeid"] = new EntityReference("plugintype", PluginTypeId)
+                }
+            });
+
+            var result = Importer(BuildSvc(step: FullStep(), customApis: customApis)).Import(AssemblyId);
+
+            result.Definitions.ShouldBeEmpty();
+            result.CustomApiTypes.ShouldContain(TypeName);
         }
 
         [Fact]

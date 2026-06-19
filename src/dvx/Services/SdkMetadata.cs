@@ -12,6 +12,7 @@ namespace dvx.Services
     {
         private List<Entity>? _messages;
         private List<Entity>? _filters;
+        private List<Entity>? _customApis;
         private Guid? _systemUserId;
 
         public Guid SystemUserId()
@@ -47,6 +48,12 @@ namespace dvx.Services
             {
                 ColumnSet = new ColumnSet("sdkmessagefilterid", "sdkmessageid",
                     "primaryobjecttypecode", "iscustomprocessingstepallowed")
+            }).Entities.ToList();
+
+        private IReadOnlyList<Entity> CustomApis =>
+            _customApis ??= svc.RetrieveMultiple(new QueryExpression("customapi")
+            {
+                ColumnSet = new ColumnSet("customapiid", "uniquename", "plugintypeid", "sdkmessageid")
             }).Entities.ToList();
 
         /// <summary>Message name → id (case-insensitive).</summary>
@@ -106,6 +113,30 @@ namespace dvx.Services
                 if (name is not null) map[name] = e.Id;
             }
             return map;
+        }
+
+        /// <summary>plugintype ids referenced by a Custom API as its main-operation implementation.</summary>
+        public HashSet<Guid> CustomApiPluginTypeIds()
+        {
+            var set = new HashSet<Guid>();
+            foreach (var e in CustomApis)
+            {
+                var typeRef = e.GetAttributeValue<EntityReference>("plugintypeid");
+                if (typeRef is not null) set.Add(typeRef.Id);
+            }
+            return set;
+        }
+
+        /// <summary>sdkmessage ids of the messages created for Custom APIs.</summary>
+        public HashSet<Guid> CustomApiMessageIds()
+        {
+            var set = new HashSet<Guid>();
+            foreach (var e in CustomApis)
+            {
+                var msgRef = e.GetAttributeValue<EntityReference>("sdkmessageid");
+                if (msgRef is not null) set.Add(msgRef.Id);
+            }
+            return set;
         }
 
         /// <summary>plugintype id → typename for the given assembly.</summary>

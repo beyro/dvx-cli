@@ -478,6 +478,9 @@ dvx plugin adopt --project <path> [options]
    attribute (adding `using dvx.PluginAttributes;` where needed).
 4. Skips classes that already carry an equivalent attribute, and reports any Dataverse step whose
    class it could not find in the project.
+5. Detects **Custom API** registrations (their Main Operation steps, and steps on Custom API
+   messages) and, instead of writing `[PluginStep]`, marks the implementing class with `[CustomApi]`
+   so `sync` / `register` skip it. See [Custom API implementations](#custom-api-implementations).
 
 > `adopt` never writes to Dataverse — it only edits source files. Review the result with `git diff`,
 > then run `dvx plugin sync` to bring Dataverse under attribute control.
@@ -769,6 +772,23 @@ Each time `register` or `sync` runs, dvx performs a full sync for the target ass
 If dvx finds a class that implements `IPlugin` but has no `[PluginStep]` attribute, it
 logs a **warning** and skips that class. All other steps are still processed.
 
+### Custom API implementations
+
+Custom APIs are **not** event plugins — their code runs at the Main Operation stage, bound through
+the `customapi` record rather than an SDK message processing step. Mark a Custom API's
+implementation class with `[CustomApi]` and dvx's discovery skips it **silently** (no
+"missing `[PluginStep]`" warning), so `sync` / `register` never try to manage it as a step:
+
+```csharp
+using dvx.PluginAttributes;
+
+[CustomApi]
+public class MyCustomApi : IPlugin { ... }
+```
+
+`adopt` applies this for you: any Custom API step it finds in Dataverse is skipped and its class is
+marked `[CustomApi]` instead of `[PluginStep]`.
+
 ### Solution membership
 
 When `--solution-unique-name` (or `solutionUniqueName` in config) is set, dvx adds each
@@ -878,6 +898,7 @@ dvx reads and writes the following Dataverse tables:
 | `pluginpackage` | Stores the plugin package (nupkg) in its `content` column. Queried by `uniquename`, then updated with the new `.nupkg` content on deploy. |
 | `pluginassembly` | Child record created by Dataverse when it processes a plugin package. Queried after deploy to get the ID for step registration. Also queried by `--assembly-name` to download content bytes. |
 | `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. |
+| `customapi` | Queried by `adopt` to identify Custom API registrations (by `plugintypeid` / `sdkmessageid`) so their steps are skipped rather than scaffolded as `[PluginStep]`. |
 | `sdkmessage` | Lookup table for message names (`Create`, `Update`, `Delete`, …). Loaded once and cached per run. |
 | `sdkmessagefilter` | Associates messages with entity types and indicates whether custom steps are allowed. |
 | `sdkmessageprocessingstep` | The step registration itself. Created, updated, and deleted by dvx. |
@@ -895,6 +916,7 @@ PluginRegistrationTool/
 ├── src/
 │   ├── dvx.PluginAttributes/        # netstandard2.0 NuGet package
 │   │   ├── PluginStepAttribute.cs         # [PluginStep] attribute with all config
+│   │   ├── CustomApiAttribute.cs          # [CustomApi] marker — excludes Custom API impls from discovery
 │   │   ├── Stage.cs                       # PreValidation / PreOperation / PostOperation
 │   │   └── dvx.PluginAttributes.csproj
 │   ├── dvx/                          # net8 CLI tool

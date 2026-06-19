@@ -8,5 +8,10 @@ namespace dvx.Models
     {
         public List<PluginStepDefinition> Definitions { get; } = new();
         public List<string>               Warnings    { get; } = new();
+
+        /// <summary>
+        /// Full type names of plugin classes that back a Custom API
+        /// </summary>
+        public List<string>               CustomApiTypes { get; } = new();
     }
 }

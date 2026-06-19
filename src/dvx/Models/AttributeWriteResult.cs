@@ -11,6 +11,9 @@ namespace dvx.Models
         /// <summary>Number of steps skipped because an equivalent attribute already existed.</summary>
         public int SkippedExisting { get; set; }
 
+        /// <summary>Number of classes marked with [CustomApi] (Custom API implementations).</summary>
+        public int CustomApisMarked { get; set; }
+
         /// <summary>Source files that were (or would be) modified, relative to the project dir.</summary>
         public List<string> FilesChanged { get; } = new();
 
