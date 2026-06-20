@@ -28,11 +28,13 @@ namespace dvx.Services
             }
 
             var messageNameById  = meta.MessageNameById();
-            var filterEntityById = meta.FilterEntityById();
             var customApiMessageIds    = meta.CustomApiMessageIds();
             var customApiPluginTypeIds = meta.CustomApiPluginTypeIds();
 
-            foreach (var step in LoadSteps(typeNameById.Keys))
+            var steps = LoadSteps(typeNameById.Keys);
+            var filterEntityById = meta.FilterEntityById(ReferencedFilterIds(steps));
+
+            foreach (var step in steps)
             {
                 var stepName = step.GetAttributeValue<string>("name") ?? step.Id.ToString();
 
@@ -125,7 +127,7 @@ namespace dvx.Services
             query.Criteria.AddCondition("plugintypeid", ConditionOperator.In, ids);
             return svc.RetrieveMultiple(query).Entities.ToList();
         }
-
+        
         private List<Entity> LoadImages(Guid stepId)
         {
             var query = new QueryExpression("sdkmessageprocessingstepimage")
@@ -148,6 +150,25 @@ namespace dvx.Services
             if (impersonating.Id == systemUserId) return Guid.Empty;
             return impersonating.Id == Guid.Empty ? null : impersonating.Id;
         }
+
+        /// <summary>
+        /// Extracts and returns a distinct list of SDK message filter IDs referenced
+        /// in the provided collection of entities.
+        /// </summary>
+        /// <param name="steps">
+        /// A collection of entities representing SDK message processing steps, from which
+        /// the SDK message filter IDs are extracted.
+        /// </param>
+        /// <returns>
+        /// A list of unique GUIDs corresponding to the SDK message filters referenced
+        /// by the given entities. If no filters are referenced, an empty list is returned.
+        /// </returns>
+        private static List<Guid> ReferencedFilterIds(IEnumerable<Entity> steps) =>
+            steps.Select(s => s.GetAttributeValue<EntityReference>("sdkmessagefilterid")?.Id)
+                 .Where(id => id.HasValue)
+                 .Select(id => id!.Value)
+                 .Distinct()
+                 .ToList();
 
         private static string[] SplitCsv(string? value)
             => string.IsNullOrWhiteSpace(value)

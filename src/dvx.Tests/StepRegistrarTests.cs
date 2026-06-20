@@ -141,6 +141,23 @@ namespace dvx.Tests
         }
 
         [Fact]
+        public void Sync_ResolvesFiltersByEntityName_NotByScanningEveryFilter()
+        {
+            // Symmetric to the adopt fix: registration must query sdkmessagefilter for the entities
+            // its definitions target, not pull every filter in the org (more than one page of them).
+            var svc = BuildDefaultSvc();
+
+            MakeRegistrar(svc).Sync(AssemblyId, new[] { MakeDef(entity: "account") });
+
+            svc.Received().RetrieveMultiple(Arg.Is<QueryExpression>(q =>
+                q.EntityName == "sdkmessagefilter" &&
+                q.Criteria.Conditions.Any(c =>
+                    c.AttributeName == "primaryobjecttypecode" &&
+                    c.Operator == ConditionOperator.In &&
+                    c.Values.Contains("account"))));
+        }
+
+        [Fact]
         public void ExistingStep_UpdatesCalled_ResultUpdatedIsOne()
         {
             var def = MakeDef();

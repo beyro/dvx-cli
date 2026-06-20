@@ -32,7 +32,7 @@ namespace dvx.Services
                 var meta = new SdkMetadata(_svc);
                 _systemUserId = meta.SystemUserId();
                 var msgCache = meta.MessageIdByName();
-                var filterCache = meta.FilterIdByKey();
+                var filterCache = meta.SdkFilterIdsByEntityNames(ReferencedEntityNames(definitions));
                 var typeCache = meta.PluginTypeIdByName(assemblyId);
 
                 if (typeCache.Count == 0)
@@ -70,7 +70,7 @@ namespace dvx.Services
                     Guid? filterId = null;
                     if (!string.IsNullOrWhiteSpace(def.Entity))
                     {
-                        var filterKey = (msgId, def.Entity.ToLowerInvariant());
+                        var filterKey = new MessageEntityKey(msgId, def.Entity);
                         if (!filterCache.TryGetValue(filterKey, out var entityFilterId))
                         {
                             result.Warnings.Add(
@@ -358,6 +358,14 @@ namespace dvx.Services
         }
 
         private static string? NullIfEmpty(string? s) => string.IsNullOrEmpty(s) ? null : s;
+
+        /// <summary>The distinct, non-global entity logical names targeted by the definitions.</summary>
+        private static List<string> ReferencedEntityNames(IReadOnlyList<PluginStepDefinition> definitions) =>
+            definitions.Select(d => d.Entity)
+                       .Where(e => !string.IsNullOrWhiteSpace(e))
+                       .Select(e => e.ToLowerInvariant())
+                       .Distinct()
+                       .ToList();
 
         // ── Image sync ─────────────────────────────────────────────────────────
 

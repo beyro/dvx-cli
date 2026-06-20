@@ -109,6 +109,35 @@ namespace dvx.Tests
         }
 
         [Fact]
+        public void Import_CustomEntityStep_AdoptsWithCorrectEntity()
+        {
+            // The reported bug: steps on custom entities were adopted with an empty entity ("").
+            var svc = BuildSvc(step: FullStep(), entity: "lhg_agency_revenue_id");
+
+            var def = Importer(svc).Import(AssemblyId).Definitions.ShouldHaveSingleItem();
+
+            def.Entity.ShouldBe("lhg_agency_revenue_id");
+        }
+
+        [Fact]
+        public void Import_ResolvesFiltersByStepFilterId_NotByScanningEveryFilter()
+        {
+            // Root cause of the empty-entity bug: the importer pulled every sdkmessagefilter in the
+            // org, and only the first page (~5000) came back, so filters past the cut-off were
+            // missed. It must instead query only the filter ids the loaded steps reference.
+            var svc = BuildSvc(step: FullStep());
+
+            Importer(svc).Import(AssemblyId);
+
+            svc.Received().RetrieveMultiple(Arg.Is<QueryExpression>(q =>
+                q.EntityName == "sdkmessagefilter" &&
+                q.Criteria.Conditions.Any(c =>
+                    c.AttributeName == "sdkmessagefilterid" &&
+                    c.Operator == ConditionOperator.In &&
+                    c.Values.Contains(FilterId))));
+        }
+
+        [Fact]
         public void Import_PreservesCustomImageAlias()
         {
             var images = new EntityCollection(new List<Entity>
