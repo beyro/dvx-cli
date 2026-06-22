@@ -337,6 +337,7 @@ dvx plugin sync --project <path> [options]
 | `--client-id` | | env var / config | Service principal client ID |
 | `--client-secret` | | env var / config | Service principal client secret |
 | `--solution-unique-name` | | from config | Add all registered steps to this Dataverse solution |
+| `--delete-orphaned` | | | Delete steps in Dataverse no longer present in code. Steps backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
 | `--dry-run` | | | Print what would change without writing to Dataverse |
 | `--config` | | auto-discovered | Path to config file |
 | `--verbose` | | | Log upload details + inner exception details on error |
@@ -348,7 +349,7 @@ dvx plugin sync --project <path> [options]
 3. Uploads the new `.nupkg` by updating the `pluginpackage` `content` column via the Dataverse SDK
 4. Queries the child `pluginassembly` record for the assembly ID
 5. Reflects the `.dll` for `[PluginStep]` attributes
-6. Fully syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, deletes orphan steps
+6. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
 7. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
 
 > **Note:** `sync` and `deploy` only support **updating** an existing plugin package.
@@ -426,6 +427,7 @@ dvx plugin register (--project <path> | --assembly-name <name>) [options]
 | `--client-id` | | Service principal client ID |
 | `--client-secret` | | Service principal client secret |
 | `--solution-unique-name` | | Add all registered steps to this Dataverse solution. Falls back to `solutionUniqueName` in config |
+| `--delete-orphaned` | | Delete steps in Dataverse no longer present in code. Steps backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
 | `--dry-run` | | Print what would change without writing to Dataverse |
 | `--verbose` | | Log solution validation and step-assignment details |
 | `--config` | | Path to config file |
