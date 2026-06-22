@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dvx</ToolCommandName>
     <PackageId>dvx.cli</PackageId>
-    <Version>1.6.3</Version>
+    <Version>1.7.0</Version>
     <Authors>Byron Matus</Authors>
     <Description>CLI for deploying code-first Dataverse / Power Platform artifacts — plugin assemblies and web resources.</Description>
     <LangVersion>default</LangVersion>
@@ -17,6 +17,9 @@
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>1.7.0:
+- Orphaned plugin step deletion is now opt-in: pass --delete-orphaned to `plugin sync` / `plugin register` to remove steps that exist in Dataverse but are no longer in code. By default, orphans are reported as warnings only.
+- Bug fix: Steps backing Custom APIs and Custom Actions are now never removed as orphans.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
