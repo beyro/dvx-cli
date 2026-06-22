@@ -68,6 +68,12 @@ namespace dvx.Commands.Shared
             "Delete web resources that are in the target solution but not in the folder/manifest. " +
             "Requires a solution. Destructive — run with --dry-run first.");
 
+        public static Option<bool> DeleteOrphanedSteps() => new Option<bool>(
+            "--delete-orphaned",
+            "Delete plugin steps registered in Dataverse but no longer present in code. " +
+            "Steps backing Custom APIs and Custom Actions are never removed. " +
+            "Destructive — run with --dry-run first.");
+
         public static Option<bool> DryRun() => new Option<bool>(
             "--dry-run",
             "Print what would happen without making any changes to Dataverse.");

@@ -24,11 +24,12 @@ namespace dvx.Commands
             var dryRun             = CommandOptions.DryRun();
             var verbose            = CommandOptions.Verbose();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
+            var deleteOrphaned     = CommandOptions.DeleteOrphanedSteps();
 
             // --project and --assembly-name are mutually exclusive; both optional — validated at runtime
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, assemblyName,
-                dryRun, verbose, solutionUniqueName);
+                dryRun, verbose, solutionUniqueName, deleteOrphaned);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -42,6 +43,7 @@ namespace dvx.Commands
                 var isDryRun    = ctx.ParseResult.GetValueForOption(dryRun);
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
                 var cliSolution = ctx.ParseResult.GetValueForOption(solutionUniqueName);
+                var delOrphaned = ctx.ParseResult.GetValueForOption(deleteOrphaned);
 
                 if (!string.IsNullOrEmpty(projectPath) && !string.IsNullOrEmpty(asmName))
                 {
@@ -93,7 +95,8 @@ namespace dvx.Commands
                         Out.DryRun("— no changes will be made to Dataverse.");
 
                     var registrar  = new StepRegistrar(svc, loggerFactory.CreateLogger<StepRegistrar>());
-                    var syncResult = registrar.Sync(assemblyId, definitions, isDryRun, solution, isVerbose);
+                    var syncResult = registrar.Sync(assemblyId, definitions, isDryRun, solution,
+                        deleteOrphaned: delOrphaned, verbose: isVerbose);
 
                     Out.SyncSummary(syncResult, isDryRun);
 

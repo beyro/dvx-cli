@@ -15,7 +15,8 @@ namespace dvx.Services
         private Guid _systemUserId;
 
         public SyncResult Sync(Guid assemblyId, IReadOnlyList<PluginStepDefinition> definitions,
-                               bool dryRun = false, string? solutionUniqueName = null, bool verbose = false)
+                               bool dryRun = false, string? solutionUniqueName = null,
+                               bool deleteOrphaned = false, bool verbose = false)
         {
             var result = new SyncResult();
             var originalSvc = _svc;
@@ -147,15 +148,30 @@ namespace dvx.Services
                     }
                 }
 
-                // ── Orphan deletion ────────────────────────────────────────────────
-                foreach (var s in existingSteps)
-                {
-                    if (consumed.Contains(s.StepId))
-                        continue;
+                // ── Orphan handling ─────────────────────────────────────────────────
+                // Steps that back a Custom API or Custom Action live on this assembly's plugin types
+                // but are owned by the API/action definition, not by dvx — never treat them as orphans.
+                var protectedMessageIds = meta.CustomApiMessageIds();
+                protectedMessageIds.UnionWith(meta.CustomActionMessageIds());
 
-                    logger.LogInformation("Deleting orphan step: {Name}", s.Name);
-                    _svc.Delete("sdkmessageprocessingstep", s.StepId);
-                    result.Deleted++;
+                var orphans = existingSteps
+                    .Where(s => !consumed.Contains(s.StepId) && !protectedMessageIds.Contains(s.MessageId))
+                    .ToList();
+
+                foreach (var orphan in orphans)
+                {
+                    if (deleteOrphaned)
+                    {
+                        logger.LogInformation("Deleting orphan step: {Name}", orphan.Name);
+                        _svc.Delete("sdkmessageprocessingstep", orphan.StepId);
+                        result.Deleted++;
+                    }
+                    else
+                    {
+                        result.Warnings.Add(
+                            $"Orphaned step '{orphan.Name}' exists in Dataverse but not in code. " +
+                            "Re-run with --delete-orphaned to remove it.");
+                    }
                 }
 
                 return result;
