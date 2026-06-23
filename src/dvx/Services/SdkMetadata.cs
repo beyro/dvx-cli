@@ -29,6 +29,7 @@ namespace dvx.Services
     {
         private List<Entity>? _messages;
         private List<Entity>? _customApis;
+        private List<Entity>? _customActions;
         private Guid? _systemUserId;
 
         public Guid SystemUserId()
@@ -80,6 +81,27 @@ namespace dvx.Services
             _customApis ??= svc.RetrieveMultiple(new QueryExpression("customapi")
             {
                 ColumnSet = new ColumnSet("customapiid", "uniquename", "plugintypeid", "sdkmessageid")
+            }).Entities.ToList();
+
+        /// <summary>
+        /// Gets the Custom Action (process) definitions cached within the instance.
+        /// </summary>
+        /// <remarks>
+        /// Custom Actions are <c>workflow</c> records with category Action (3) and type Definition (1).
+        /// Each registers an SDK message named after the action's <c>uniquename</c>.
+        /// </remarks>
+        private IReadOnlyList<Entity> CustomActions =>
+            _customActions ??= svc.RetrieveMultiple(new QueryExpression("workflow")
+            {
+                ColumnSet = new ColumnSet("workflowid", "uniquename"),
+                Criteria  = new FilterExpression
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("category", ConditionOperator.Equal, 3), // Action
+                        new ConditionExpression("type",     ConditionOperator.Equal, 1), // Definition
+                    }
+                }
             }).Entities.ToList();
 
         /// <summary>
@@ -209,6 +231,24 @@ namespace dvx.Services
             {
                 var msgRef = e.GetAttributeValue<EntityReference>("sdkmessageid");
                 if (msgRef is not null) set.Add(msgRef.Id);
+            }
+            return set;
+        }
+
+        /// <summary>
+        /// Retrieves the set of GUIDs for SDK messages owned by Custom Actions, resolved by matching
+        /// each action's <c>uniquename</c> to an <c>sdkmessage</c> name.
+        /// </summary>
+        /// <returns>A hash set containing the unique identifiers for SDK messages linked to Custom Actions.</returns>
+        public HashSet<Guid> CustomActionMessageIds()
+        {
+            var messageIdByName = MessageIdByName();
+            var set = new HashSet<Guid>();
+            foreach (var e in CustomActions)
+            {
+                var uniqueName = e.GetAttributeValue<string>("uniquename");
+                if (uniqueName is not null && messageIdByName.TryGetValue(uniqueName, out var id))
+                    set.Add(id);
             }
             return set;
         }

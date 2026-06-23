@@ -23,9 +23,10 @@ namespace dvx.Commands
             var dryRun             = CommandOptions.DryRun();
             var verbose            = CommandOptions.Verbose();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
+            var deleteOrphaned     = CommandOptions.DeleteOrphanedSteps();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                dryRun, verbose, solutionUniqueName);
+                dryRun, verbose, solutionUniqueName, deleteOrphaned);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -39,6 +40,7 @@ namespace dvx.Commands
                 var isDryRun    = ctx.ParseResult.GetValueForOption(dryRun);
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
                 var cliSolution = ctx.ParseResult.GetValueForOption(solutionUniqueName);
+                var delOrphaned = ctx.ParseResult.GetValueForOption(deleteOrphaned);
 
                 try
                 {
@@ -78,7 +80,8 @@ namespace dvx.Commands
                         Out.DryRun("— no step changes will be made.");
 
                     var registrar  = new StepRegistrar(svc, loggerFactory.CreateLogger<StepRegistrar>());
-                    var syncResult = registrar.Sync(assemblyId, definitions, isDryRun, solution, isVerbose);
+                    var syncResult = registrar.Sync(assemblyId, definitions, isDryRun, solution,
+                        deleteOrphaned: delOrphaned, verbose: isVerbose);
 
                     Out.SyncSummary(syncResult, isDryRun);
 

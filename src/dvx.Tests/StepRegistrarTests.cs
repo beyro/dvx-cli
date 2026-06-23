@@ -98,6 +98,14 @@ namespace dvx.Tests
             svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "sdkmessageprocessingstepimage"))
                .Returns(existingImages ?? new EntityCollection());
 
+            // custom APIs (none by default)
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "customapi"))
+               .Returns(new EntityCollection());
+
+            // custom actions / workflows (none by default)
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "workflow"))
+               .Returns(new EntityCollection());
+
             // Create returns a fresh Guid
             svc.Create(Arg.Any<Entity>()).Returns(_ => Guid.NewGuid());
 
@@ -216,13 +224,121 @@ namespace dvx.Tests
             svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "sdkmessageprocessingstepimage"))
                .Returns(new EntityCollection());
 
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "customapi"))
+               .Returns(new EntityCollection());
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "workflow"))
+               .Returns(new EntityCollection());
+
             svc.Create(Arg.Any<Entity>()).Returns(_ => Guid.NewGuid());
 
             // definitions don't include the old plugin type
-            var result = MakeRegistrar(svc).Sync(AssemblyId, new[] { MakeDef() });
+            var result = MakeRegistrar(svc).Sync(AssemblyId, new[] { MakeDef() }, deleteOrphaned: true);
 
             result.Deleted.ShouldBe(1);
             svc.Received(1).Delete("sdkmessageprocessingstep", orphanId);
+        }
+
+        [Fact]
+        public void OrphanStep_DeleteOrphanedFalse_Warns_NotDeleted()
+        {
+            // Deletion is opt-in: by default an orphan is reported as a warning, not removed.
+            var orphanId = Guid.NewGuid();
+            var orphan   = new Entity("sdkmessageprocessingstep", orphanId)
+            {
+                ["name"]         = "Ns.OldPlugin | account | create | PreOperation",
+                ["plugintypeid"] = new EntityReference("plugintype", PluginTypeId),
+                ["sdkmessageid"] = new EntityReference("sdkmessage", MsgId),
+            };
+
+            var svc    = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { orphan }));
+            var result = MakeRegistrar(svc).Sync(AssemblyId, Array.Empty<PluginStepDefinition>());
+
+            result.Deleted.ShouldBe(0);
+            result.Warnings.ShouldContain(w => w.Contains("Ns.OldPlugin | account | create | PreOperation"));
+            svc.DidNotReceive().Delete("sdkmessageprocessingstep", orphanId);
+        }
+
+        [Fact]
+        public void OrphanStep_OnCustomApiMessage_NotDeleted()
+        {
+            // A Custom API's backing step lives on this assembly's plugin types but is owned by the
+            // Custom API definition — it must never be treated as an orphan, even when pruning.
+            var customApiMsgId = Guid.NewGuid();
+            var stepId         = Guid.NewGuid();
+
+            var orphanOnCustomApi = new Entity("sdkmessageprocessingstep", stepId)
+            {
+                ["name"]         = "MyCustomApi.Handler",
+                ["plugintypeid"] = new EntityReference("plugintype", PluginTypeId),
+                ["sdkmessageid"] = new EntityReference("sdkmessage", customApiMsgId),
+            };
+
+            var svc = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { orphanOnCustomApi }));
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "customapi"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("customapi", Guid.NewGuid())
+                   {
+                       ["sdkmessageid"] = new EntityReference("sdkmessage", customApiMsgId)
+                   }
+               }));
+
+            var result = MakeRegistrar(svc).Sync(AssemblyId, Array.Empty<PluginStepDefinition>(), deleteOrphaned: true);
+
+            result.Deleted.ShouldBe(0);
+            svc.DidNotReceive().Delete("sdkmessageprocessingstep", stepId);
+        }
+
+        [Fact]
+        public void OrphanStep_OnCustomActionMessage_NotDeleted()
+        {
+            // A Custom Action (workflow, category = Action) owns an SDK message named after its
+            // uniquename. A step on that message backs the action and must never be orphan-deleted.
+            var actionMsgId           = Guid.NewGuid();
+            const string actionUnique = "new_MyAction";
+            var stepId                = Guid.NewGuid();
+
+            var orphanOnAction = new Entity("sdkmessageprocessingstep", stepId)
+            {
+                ["name"]         = "MyAction.Handler",
+                ["plugintypeid"] = new EntityReference("plugintype", PluginTypeId),
+                ["sdkmessageid"] = new EntityReference("sdkmessage", actionMsgId),
+            };
+
+            var svc = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { orphanOnAction }));
+
+            // The action's message must be resolvable by name (workflow.uniquename → sdkmessage.name).
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "sdkmessage"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("sdkmessage", MsgId)       { ["name"] = MessageName },
+                   new Entity("sdkmessage", actionMsgId) { ["name"] = actionUnique },
+               }));
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "workflow"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("workflow", Guid.NewGuid()) { ["uniquename"] = actionUnique }
+               }));
+
+            var result = MakeRegistrar(svc).Sync(AssemblyId, Array.Empty<PluginStepDefinition>(), deleteOrphaned: true);
+
+            result.Deleted.ShouldBe(0);
+            svc.DidNotReceive().Delete("sdkmessageprocessingstep", stepId);
+        }
+
+        [Fact]
+        public void ConsumedStep_DeleteOrphanedTrue_NotDeleted()
+        {
+            // Pruning must only remove genuine orphans — a step matching a definition is never deleted.
+            var def      = MakeDef();
+            var stepId   = Guid.NewGuid();
+            var existing = new Entity("sdkmessageprocessingstep", stepId) { ["name"] = def.StepName };
+
+            var svc    = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { existing }));
+            var result = MakeRegistrar(svc).Sync(AssemblyId, new[] { def }, deleteOrphaned: true);
+
+            result.Deleted.ShouldBe(0);
+            svc.DidNotReceive().Delete("sdkmessageprocessingstep", stepId);
         }
 
         [Fact]
@@ -651,6 +767,55 @@ namespace dvx.Tests
                 e.LogicalName == "sdkmessageprocessingstepimage" &&
                 e.Contains("attributes") &&
                 e.GetAttributeValue<string>("attributes") == null));
+        }
+
+        // ── Image message property name ────────────────────────────────────────
+
+        [Fact]
+        public void CreateStep_PostImage_UsesIdMessagePropertyName()
+        {
+            // The Create message binds post-images via 'Id'. dvx previously hardcoded 'Target',
+            // which Dataverse rejects ("Message property name 'Target' is not valid on message Create").
+            var def = MakeDef(stage: 40, postImage: true); // message defaults to "Create"
+            var svc = BuildDefaultSvc();
+
+            MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.Received().Create(Arg.Is<Entity>(e =>
+                e.LogicalName == "sdkmessageprocessingstepimage" &&
+                e.GetAttributeValue<string>("messagepropertyname") == "Id"));
+        }
+
+        [Fact]
+        public void UpdateStep_PostImage_UsesTargetMessagePropertyName()
+        {
+            var def = MakeDef(message: "Update", stage: 40, postImage: true);
+            var svc = BuildDefaultSvc();
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "sdkmessage"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("sdkmessage", MsgId) { ["name"] = "Update" }
+               }));
+
+            MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.Received().Create(Arg.Is<Entity>(e =>
+                e.LogicalName == "sdkmessageprocessingstepimage" &&
+                e.GetAttributeValue<string>("messagepropertyname") == "Target"));
+        }
+
+        [Fact]
+        public void MessageWithoutImageSupport_SkipsImage_AddsWarning()
+        {
+            // Associate has no valid image property name. The image must be skipped (not registered
+            // with an invalid property name), and the user warned.
+            var def = MakeDef(entity: "", message: "Associate", stage: 40, postImage: true);
+            var svc = BuildEntitylessSvc("Associate");
+
+            var result = MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.DidNotReceive().Create(Arg.Is<Entity>(e => e.LogicalName == "sdkmessageprocessingstepimage"));
+            result.Warnings.ShouldContain(w => w.Contains("does not support entity images"));
         }
 
         // ── Change detection (skip unchanged) ──────────────────────────────────
