@@ -387,29 +387,35 @@ namespace dvx.Services
 
         private void SyncImages(Guid stepId, PluginStepDefinition def)
         {
+            var messagePropertyName = ImageMessagePropertyName(def.Message);
             var existingImages = LoadExistingImages(stepId);
             var desiredImages = new HashSet<(ImageType, string)>();
 
-            foreach (var img in def.Images)
+            // A message with no valid image property (e.g. Associate) cannot carry images. Leave
+            // desiredImages empty so any are skipped here; ValidateImages surfaces the warning.
+            if (messagePropertyName is not null)
             {
-                // PostImage only valid on PostOperation (stage 40)
-                if (img.ImageType == ImageType.Post && def.Stage != 40)
+                foreach (var img in def.Images)
                 {
-                    logger.LogWarning(
-                        "PostImage requested on stage {Stage} for {Type} — only valid on PostOperation. Skipping.",
-                        PluginStepDefinition.StageName(def.Stage), def.TypeFullName);
-                    continue;
-                }
+                    // PostImage only valid on PostOperation (stage 40)
+                    if (img.ImageType == ImageType.Post && def.Stage != 40)
+                    {
+                        logger.LogWarning(
+                            "PostImage requested on stage {Stage} for {Type} — only valid on PostOperation. Skipping.",
+                            PluginStepDefinition.StageName(def.Stage), def.TypeFullName);
+                        continue;
+                    }
 
-                desiredImages.Add((img.ImageType, img.Alias));
+                    desiredImages.Add((img.ImageType, img.Alias));
 
-                if (existingImages.TryGetValue((img.ImageType, img.Alias), out var existingId))
-                {
-                    _svc.Update(BuildImageEntity(img, stepId, existingId));
-                }
-                else
-                {
-                    _svc.Create(BuildImageEntity(img, stepId));
+                    if (existingImages.TryGetValue((img.ImageType, img.Alias), out var existingId))
+                    {
+                        _svc.Update(BuildImageEntity(img, stepId, messagePropertyName, existingId));
+                    }
+                    else
+                    {
+                        _svc.Create(BuildImageEntity(img, stepId, messagePropertyName));
+                    }
                 }
             }
 
@@ -444,7 +450,7 @@ namespace dvx.Services
             return cache;
         }
 
-        private static Entity BuildImageEntity(ImageDefinition img, Guid stepId, Guid? existingId = null)
+        private static Entity BuildImageEntity(ImageDefinition img, Guid stepId, string messagePropertyName, Guid? existingId = null)
         {
             var e = existingId.HasValue
                 ? new Entity("sdkmessageprocessingstepimage", existingId.Value)
@@ -454,7 +460,7 @@ namespace dvx.Services
             e["imagetype"] = new OptionSetValue((int)img.ImageType);
             e["name"] = img.Alias;
             e["entityalias"] = img.Alias;
-            e["messagepropertyname"] = "Target";
+            e["messagepropertyname"] = messagePropertyName;
             e["attributes"] = img.Attributes.Length > 0 ? string.Join(",", img.Attributes) : null;
 
             return e;
@@ -471,6 +477,10 @@ namespace dvx.Services
 
         private static void ValidateImages(PluginStepDefinition def, SyncResult result)
         {
+            if (def.Images.Count > 0 && ImageMessagePropertyName(def.Message) is null)
+                result.Warnings.Add(
+                    $"Message '{def.Message}' does not support entity images — image(s) on {def.TypeFullName} will be skipped.");
+
             foreach (var img in def.Images)
             {
                 if (img.ImageType == ImageType.Post && def.Stage != 40)
@@ -478,5 +488,29 @@ namespace dvx.Services
                         $"PostImage on {def.TypeFullName} ({PluginStepDefinition.StageName(def.Stage)}) will be skipped — only valid on PostOperation.");
             }
         }
+
+        /// <summary>
+        /// The entity-image message-property name for an SDK message, or null when the message has no
+        /// valid image property (no image can be registered). Mirrors the mapping used by the
+        /// XrmToolBox Plugin Registration tool.
+        /// </summary>
+        private static string? ImageMessagePropertyName(string message) => message switch
+        {
+            "Assign"                => "Target",
+            "Create"                => "Id",
+            "CreateMultiple"        => "Ids",
+            "Delete"                => "Target",
+            "DeliverIncoming"       => "EmailId",
+            "DeliverPromote"        => "EmailId",
+            "ExecuteWorkflow"       => "Target",
+            "Merge"                 => "Target",
+            "Route"                 => "Target",
+            "Send"                  => "EmailId",
+            "SetState"              => "EntityMoniker",
+            "SetStateDynamicEntity" => "EntityMoniker",
+            "Update"                => "Target",
+            "UpdateMultiple"        => "Targets",
+            _                       => null,
+        };
     }
 }

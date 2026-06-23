@@ -769,6 +769,55 @@ namespace dvx.Tests
                 e.GetAttributeValue<string>("attributes") == null));
         }
 
+        // ── Image message property name ────────────────────────────────────────
+
+        [Fact]
+        public void CreateStep_PostImage_UsesIdMessagePropertyName()
+        {
+            // The Create message binds post-images via 'Id'. dvx previously hardcoded 'Target',
+            // which Dataverse rejects ("Message property name 'Target' is not valid on message Create").
+            var def = MakeDef(stage: 40, postImage: true); // message defaults to "Create"
+            var svc = BuildDefaultSvc();
+
+            MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.Received().Create(Arg.Is<Entity>(e =>
+                e.LogicalName == "sdkmessageprocessingstepimage" &&
+                e.GetAttributeValue<string>("messagepropertyname") == "Id"));
+        }
+
+        [Fact]
+        public void UpdateStep_PostImage_UsesTargetMessagePropertyName()
+        {
+            var def = MakeDef(message: "Update", stage: 40, postImage: true);
+            var svc = BuildDefaultSvc();
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "sdkmessage"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("sdkmessage", MsgId) { ["name"] = "Update" }
+               }));
+
+            MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.Received().Create(Arg.Is<Entity>(e =>
+                e.LogicalName == "sdkmessageprocessingstepimage" &&
+                e.GetAttributeValue<string>("messagepropertyname") == "Target"));
+        }
+
+        [Fact]
+        public void MessageWithoutImageSupport_SkipsImage_AddsWarning()
+        {
+            // Associate has no valid image property name. The image must be skipped (not registered
+            // with an invalid property name), and the user warned.
+            var def = MakeDef(entity: "", message: "Associate", stage: 40, postImage: true);
+            var svc = BuildEntitylessSvc("Associate");
+
+            var result = MakeRegistrar(svc).Sync(AssemblyId, new[] { def });
+
+            svc.DidNotReceive().Create(Arg.Is<Entity>(e => e.LogicalName == "sdkmessageprocessingstepimage"));
+            result.Warnings.ShouldContain(w => w.Contains("does not support entity images"));
+        }
+
         // ── Change detection (skip unchanged) ──────────────────────────────────
 
         [Fact]

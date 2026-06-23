@@ -19,7 +19,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>1.7.0:
 - Orphaned plugin step deletion is now opt-in: pass --delete-orphaned to `plugin sync` / `plugin register` to remove steps that exist in Dataverse but are no longer in code. By default, orphans are reported as warnings only.
-- Bug fix: Steps backing Custom APIs and Custom Actions are now never removed as orphans.</PackageReleaseNotes>
+- Bug fix: Steps backing Custom APIs and Custom Actions are now never removed as orphans.
+- Bug fix: entity images on Create steps (and other non-Update messages) failed to register because the image property name was always 'Target'. It is now derived per message (Create -&gt; Id, SetState -&gt; EntityMoniker, etc.); messages with no valid image property skip the image with a warning.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
