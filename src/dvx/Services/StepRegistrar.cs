@@ -54,6 +54,13 @@ namespace dvx.Services
                     byIdentity.TryAdd(s.Identity, s);
                 }
 
+                // Steps already in the target solution. Re-adding a component is an idempotent
+                // server round-trip, so skip AddSolutionComponent for steps the solution already
+                // contains — a no-op re-sync would otherwise re-add every step, one call each.
+                var solutionStepIds = solutionUniqueName is not null && !dryRun
+                    ? _solutionService.GetSolutionStepIds(solutionUniqueName, verbose)
+                    : new HashSet<Guid>();
+
                 // ── Upsert loop ────────────────────────────────────────────────────
                 var consumed = new HashSet<Guid>();
 
@@ -123,7 +130,7 @@ namespace dvx.Services
                             else
                                 UpdateStep(def, existing.StepId,
                                     msgId, filterId, pluginTypeId, result);
-                            if (solutionUniqueName is not null && !dryRun)
+                            if (solutionUniqueName is not null && !dryRun && !solutionStepIds.Contains(existing.StepId))
                                 _solutionService.AddStepToSolution(existing.StepId, solutionUniqueName, verbose);
                         }
                         else

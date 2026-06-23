@@ -151,5 +151,40 @@ namespace dvx.Tests
                         se.LinkToEntityName == "solution" &&
                         se.LinkCriteria.Conditions.Any(c => c.AttributeName == "uniquename" && c.Values.Contains("MySolution"))))));
         }
+
+        // ── GetSolutionStepIds ─────────────────────────────────────────────────
+
+        [Fact]
+        public void GetSolutionStepIds_ReturnsObjectIds()
+        {
+            var svc = Substitute.For<IOrganizationService>();
+            var id  = Guid.NewGuid();
+            svc.RetrieveMultiple(Arg.Is<QueryExpression>(q => q.EntityName == "solutioncomponent"))
+               .Returns(new EntityCollection(new List<Entity>
+               {
+                   new Entity("solutioncomponent", Guid.NewGuid()) { ["objectid"] = id }
+               }));
+
+            var result = new SolutionService(svc).GetSolutionStepIds("MySolution");
+
+            result.Count.ShouldBe(1);
+            result.ShouldContain(id);
+        }
+
+        [Fact]
+        public void GetSolutionStepIds_FiltersByComponentType92AndSolutionUniqueName()
+        {
+            var svc = Substitute.For<IOrganizationService>();
+            svc.RetrieveMultiple(Arg.Any<QueryExpression>()).Returns(new EntityCollection());
+
+            new SolutionService(svc).GetSolutionStepIds("MySolution");
+
+            svc.Received(1).RetrieveMultiple(Arg.Is<QueryExpression>(q =>
+                q.EntityName == "solutioncomponent" &&
+                q.Criteria.Conditions.Any(c => c.AttributeName == "componenttype" && c.Values.Contains(92)) &&
+                q.LinkEntities.Any(le =>
+                    le.LinkToEntityName == "solution" &&
+                    le.LinkCriteria.Conditions.Any(c => c.AttributeName == "uniquename" && c.Values.Contains("MySolution")))));
+        }
     }
 }

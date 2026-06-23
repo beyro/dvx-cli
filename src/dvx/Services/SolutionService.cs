@@ -83,5 +83,39 @@ namespace dvx.Services
 
             return results;
         }
+
+        /// <summary>
+        /// Returns the ids of every plugin step (sdkmessageprocessingstep) already a component of
+        /// the given solution. Lets the registrar skip redundant AddSolutionComponent calls for
+        /// steps the solution already contains. Mirrors <see cref="GetSolutionWebResources"/>.
+        /// </summary>
+        public virtual HashSet<Guid> GetSolutionStepIds(string solutionUniqueName, bool verbose = false)
+        {
+            if (verbose)
+                Out.Dim($"    Querying plugin steps in solution '{solutionUniqueName}'...");
+
+            var query = new QueryExpression("solutioncomponent")
+            {
+                ColumnSet = new ColumnSet("objectid"),
+                Criteria = new FilterExpression
+                {
+                    Conditions = { new ConditionExpression("componenttype", ConditionOperator.Equal, 92) }
+                }
+            };
+            var solution = query.AddLink("solution", "solutionid", "solutionid");
+            solution.LinkCriteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+            var ids = new HashSet<Guid>();
+            foreach (var e in svc.RetrieveMultiple(query).Entities)
+            {
+                var id = e.GetAttributeValue<Guid>("objectid");
+                if (id != Guid.Empty) ids.Add(id);
+            }
+
+            if (verbose)
+                Out.Dim($"    Found {ids.Count} plugin step(s) in solution.");
+
+            return ids;
+        }
     }
 }
