@@ -912,6 +912,7 @@ namespace dvx.Tests
             };
             var svc             = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { existingStepEntity }));
             var solutionService = Substitute.For<SolutionService>(svc);
+            solutionService.GetSolutionStepIds("MySolution", Arg.Any<bool>()).Returns(new HashSet<Guid>());
             var registrar       = MakeRegistrarWithSolution(svc, solutionService);
 
             registrar.Sync(AssemblyId, new[] { def }, solutionUniqueName: "MySolution");
@@ -954,6 +955,41 @@ namespace dvx.Tests
 
             solutionService.Received(1).ValidateSolutionExists("MySolution", true);
             solutionService.Received(1).AddStepToSolution(Arg.Any<Guid>(), "MySolution", true);
+        }
+
+        [Fact]
+        public void SolutionProvided_ExistingStepAlreadyInSolution_AddStepToSolutionNotCalled()
+        {
+            // The optimization: a matched step the solution already contains must not be re-added.
+            // AddSolutionComponent is an idempotent server round-trip, so re-adding is pure latency.
+            var def    = MakeDef();
+            var stepId = Guid.NewGuid();
+            var existingStepEntity = new Entity("sdkmessageprocessingstep", stepId)
+            {
+                ["name"] = def.StepName
+            };
+            var svc             = BuildDefaultSvc(existingSteps: new EntityCollection(new List<Entity> { existingStepEntity }));
+            var solutionService = Substitute.For<SolutionService>(svc);
+            solutionService.GetSolutionStepIds("MySolution", Arg.Any<bool>())
+                           .Returns(new HashSet<Guid> { stepId });
+            var registrar       = MakeRegistrarWithSolution(svc, solutionService);
+
+            registrar.Sync(AssemblyId, new[] { def }, solutionUniqueName: "MySolution");
+
+            solutionService.DidNotReceive().AddStepToSolution(stepId, "MySolution", Arg.Any<bool>());
+        }
+
+        [Fact]
+        public void SolutionProvided_QueriesSolutionStepIdsOnce()
+        {
+            // Solution membership is read once per sync (before the loop), not once per step.
+            var svc             = BuildDefaultSvc();
+            var solutionService = Substitute.For<SolutionService>(svc);
+            var registrar       = MakeRegistrarWithSolution(svc, solutionService);
+
+            registrar.Sync(AssemblyId, new[] { MakeDef() }, solutionUniqueName: "MySolution");
+
+            solutionService.Received(1).GetSolutionStepIds("MySolution", Arg.Any<bool>());
         }
     }
 }
