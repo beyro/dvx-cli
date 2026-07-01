@@ -1,10 +1,18 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using dvx.Models;
 
 namespace dvx.Config
 {
     public static class ConfigLoader
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() },
+        };
+
+
         /// <summary>
         /// Returns the config file path to use: the explicit path when given, otherwise the
         /// nearest <c>dvx.json</c> found by walking up from <paramref name="startDirectory"/>
@@ -46,8 +54,7 @@ namespace dvx.Config
                 return null;
 
             var json   = File.ReadAllText(filePath);
-            var config = JsonSerializer.Deserialize<AppConfig>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
 
             if (config is null)
                 throw new InvalidOperationException($"Config file at '{filePath}' is empty or invalid.");
@@ -74,7 +81,8 @@ namespace dvx.Config
             AppConfig? config,
             string?    cliUrl,
             string?    cliClientId,
-            string?    cliClientSecret)
+            string?    cliClientSecret,
+            bool       cliInteractiveAuth = false)
         {
             // Start from config entry when an environment name is resolvable;
             // fall back to an empty base when all values will come from CLI/env vars.
@@ -91,6 +99,7 @@ namespace dvx.Config
                 base_ = GetEnvironment(config, resolvedName);
             }
             else if (cliUrl is null && cliClientId is null && cliClientSecret is null
+                     && !cliInteractiveAuth
                      && Environment.GetEnvironmentVariable("DVX_URL") is null
                      && Environment.GetEnvironmentVariable("DVX_CLIENT_ID") is null
                      && Environment.GetEnvironmentVariable("DVX_CLIENT_SECRET") is null)
@@ -100,9 +109,12 @@ namespace dvx.Config
                     "or provide --url / --client-id / --client-secret directly.");
             }
 
+            // --interactive-auth flag wins; otherwise honour the config's authType.
+            var authType = cliInteractiveAuth ? DataverseAuthType.Interactive : base_.AuthType;
+
             // Layer: environment variables over base
-            var url          = Environment.GetEnvironmentVariable("DVX_URL")          ?? base_.Url;
-            var clientId     = Environment.GetEnvironmentVariable("DVX_CLIENT_ID")    ?? base_.ClientId;
+            var url          = Environment.GetEnvironmentVariable("DVX_URL")           ?? base_.Url;
+            var clientId     = Environment.GetEnvironmentVariable("DVX_CLIENT_ID")     ?? base_.ClientId;
             var clientSecret = Environment.GetEnvironmentVariable("DVX_CLIENT_SECRET") ?? base_.ClientSecret;
 
             // Layer: CLI args (highest priority)
@@ -112,9 +124,12 @@ namespace dvx.Config
 
             // Validate
             var missing = new List<string>();
-            if (string.IsNullOrWhiteSpace(url))          missing.Add("--url / DVX_URL");
-            if (string.IsNullOrWhiteSpace(clientId))     missing.Add("--client-id / DVX_CLIENT_ID");
-            if (string.IsNullOrWhiteSpace(clientSecret)) missing.Add("--client-secret / DVX_CLIENT_SECRET");
+            if (string.IsNullOrWhiteSpace(url)) missing.Add("--url / DVX_URL");
+            if (authType == DataverseAuthType.ClientSecret)
+            {
+                if (string.IsNullOrWhiteSpace(clientId))     missing.Add("--client-id / DVX_CLIENT_ID");
+                if (string.IsNullOrWhiteSpace(clientSecret)) missing.Add("--client-secret / DVX_CLIENT_SECRET");
+            }
 
             if (missing.Count > 0)
                 throw new InvalidOperationException(
@@ -126,6 +141,7 @@ namespace dvx.Config
                 Url          = url,
                 ClientId     = clientId,
                 ClientSecret = clientSecret,
+                AuthType     = authType,
             };
         }
 

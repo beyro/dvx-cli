@@ -29,6 +29,11 @@ namespace dvx.Commands.Shared
             "Service principal client secret. " +
             "Overrides config. Env var: DVX_CLIENT_SECRET.");
 
+        public static Option<bool> InteractiveAuth() => new Option<bool>(
+            "--interactive-auth",
+            "Sign in interactively via the browser instead of a client secret (local dev). " +
+            "Token is cached securely. Equivalent to authType=interactive in config.");
+
         public static Option<string?> Project() => new Option<string?>(
             "--project",
             "Path to the plugin .csproj file. The tool will run 'dotnet build' to produce the .nupkg and .dll. " +

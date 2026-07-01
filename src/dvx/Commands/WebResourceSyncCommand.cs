@@ -29,9 +29,10 @@ namespace dvx.Commands
             var deleteOrphaned     = CommandOptions.DeleteOrphaned();
             var dryRun             = CommandOptions.DryRun();
             var verbose            = CommandOptions.Verbose();
+            var interactiveAuth    = CommandOptions.InteractiveAuth();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, folder, manifest, publisherPrefix,
-                solutionUniqueName, noPublish, deleteOrphaned, dryRun, verbose);
+                solutionUniqueName, noPublish, deleteOrphaned, dryRun, verbose, interactiveAuth);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -49,6 +50,7 @@ namespace dvx.Commands
                 var delOrphaned = p.GetValueForOption(deleteOrphaned);
                 var isDryRun    = p.GetValueForOption(dryRun);
                 var isVerbose   = p.GetValueForOption(verbose);
+                var cliInteractive = p.GetValueForOption(interactiveAuth);
 
                 try
                 {
@@ -84,7 +86,7 @@ namespace dvx.Commands
                     }
 
                     var envConfig = ConfigLoader.ResolveEnvironmentConfig(
-                        envName, appConfig, cliUrl, cliClientId, cliSecret);
+                        envName, appConfig, cliUrl, cliClientId, cliSecret, cliInteractive);
                     using var svc = DataverseClientFactory.Create(envConfig);
 
                     var desired = new List<WebResourceDefinition>();

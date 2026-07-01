@@ -32,9 +32,10 @@ namespace dvx.Commands
                 "Defaults to the project's assembly name.");
             var dryRun             = CommandOptions.DryRun();
             var verbose            = CommandOptions.Verbose();
+            var interactiveAuth    = CommandOptions.InteractiveAuth();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, assemblyName,
-                dryRun, verbose);
+                dryRun, verbose, interactiveAuth);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -47,12 +48,13 @@ namespace dvx.Commands
                 var asmName       = ctx.ParseResult.GetValueForOption(assemblyName);
                 var isDryRun      = ctx.ParseResult.GetValueForOption(dryRun);
                 var isVerbose     = ctx.ParseResult.GetValueForOption(verbose);
+                var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
 
                 try
                 {
                     var appConfig = ConfigLoader.TryLoad(configPath);
                     var envConfig = ConfigLoader.ResolveEnvironmentConfig(
-                        envName, appConfig, cliUrl, cliClientId, cliSecret);
+                        envName, appConfig, cliUrl, cliClientId, cliSecret, cliInteractive);
                     var resolvedProject = ConfigLoader.ResolveProject(appConfig, projectPath);
                     using var svc       = DataverseClientFactory.Create(envConfig);
 
