@@ -40,7 +40,7 @@ Commands are grouped by artifact type:
 | Requirement | Notes |
 |---|---|
 | [.NET 8 SDK](https://dotnet.microsoft.com/download) | Runtime for dvx itself |
-| Dataverse service principal | ClientId + ClientSecret with the **Dynamics CRM System Administrator** or other role with privileges allowing plugin / web-resource deployment |
+| Dataverse service principal | ClientId + ClientSecret with the **Dynamics CRM System Administrator** or other role with privileges allowing plugin / web-resource deployment. For local development you can instead sign in through the browser — see [Interactive login](#interactive-login-local-development) |
 
 
 ---
@@ -199,6 +199,7 @@ If no file is found, connection details must be supplied entirely via CLI option
 | `url` | ✓ (per env) | Dataverse org URL                                                                                                                                                                                                                                                                                                                                                              |
 | `clientId` | ✓ (per env) | App registration client ID                                                                                                                                                                                                                                                                                                                                                     |
 | `clientSecret` | ✓ (per env) | App registration secret                                                                                                                                                                                                                                                                                                                                                        |
+| `authType` | | `clientSecret` (default) or `interactive`. `interactive` signs in through the browser for local development and needs only `url` (no `clientId` / `clientSecret`) — see [Interactive login](#interactive-login-local-development) |
 | `publisherPrefix` | when no solution given | Dataverse publisher customization prefix (e.g. `"pub"`). Used to form the `pluginpackage` unique name (`{prefix}_{assemblyName}`) and to prefix folder-derived web-resource names. **Fallback only** — when a solution is provided, its publisher's prefix is used instead (and this value, if also set, is ignored with a warning). Can be supplied via `--publisher-prefix`. |
 | `solutionUniqueName` | | Unique name of the Dataverse solution to add deployed components (plugin steps / web resources) to. **Authoritative for the customization prefix**: when set, the prefix is read from this solution's publisher rather than `publisherPrefix`. Can be overridden per-command with `--solution-unique-name`.                                                                    |
 | `webResources` | | Defaults for `webresource sync`: `folder`, `manifest`, and `publish` (default `true`). See [Web resources](#web-resources).                                                                                                                                                                                                                                                    |
@@ -233,6 +234,41 @@ This lets you keep non-secret values in `dvx.json` and inject secrets at runtime
 export DVX_CLIENT_SECRET=my-secret
 dvx plugin sync --project ./src/MyPlugin/MyPlugin.csproj
 ```
+
+### Interactive login (local development)
+
+For local development you can sign in through the browser instead of managing a service
+principal secret. Set `authType` to `interactive` on an environment — only `url` is required
+(no `clientId` / `clientSecret`):
+
+```json
+{
+  "defaultEnvironment": "dev",
+  "environments": [
+    {
+      "name": "dev",
+      "url": "https://your-org.crm4.dynamics.com",
+      "authType": "interactive"
+    }
+  ],
+  "publisherPrefix": "yourprefix"
+}
+```
+
+Or enable it per command with `--interactive-auth`, which overrides the config `authType`:
+
+```bash
+dvx plugin sync --interactive-auth \
+  --url https://your-org.crm4.dynamics.com \
+  --project ./src/MyPlugin/MyPlugin.csproj
+```
+
+The first command opens your default browser to sign in. dvx uses a built-in public client, so
+**no app registration is required**. The sign-in is cached securely on your machine, so subsequent
+commands reuse it without prompting again until it expires.
+
+> **Local use only.** Interactive login is meant for developers running dvx on their own machine.
+> For unattended / CI-CD runs, use a service principal (`clientSecret` — the default `authType`).
 
 ---
 
@@ -317,7 +353,7 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 
 > Commands are grouped by artifact: `dvx plugin …` for plugin assemblies, `dvx webresource …` for
 > web resources, and `dvx config …` for configuration. Connection options
-> (`--env` / `--url` / `--client-id` / `--client-secret`), `--config`, `--dry-run`,
+> (`--env` / `--url` / `--client-id` / `--client-secret` / `--interactive-auth`), `--config`, `--dry-run`,
 > and `--verbose` are shared across all commands.
 
 ### plugin sync
