@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dvx</ToolCommandName>
     <PackageId>dvx.cli</PackageId>
-    <Version>1.7.1</Version>
+    <Version>1.8.0</Version>
     <Authors>Byron Matus</Authors>
     <Description>CLI for deploying code-first Dataverse / Power Platform artifacts — plugin assemblies and web resources.</Description>
     <LangVersion>default</LangVersion>
@@ -17,8 +17,8 @@
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>1.7.1:
-- Improve performance of sync/register by only making a AddSolutionComponent request if steps are not already part of the solution.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.8.0:
+- Added interactive login via `authType` in config file or `--interactive-auth` flag. </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
-    <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.1.*" />
+    <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.*" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.*" />

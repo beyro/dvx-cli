@@ -1,5 +1,6 @@
 using System.Text.Json;
 using dvx.Config;
+using dvx.Models;
 using Shouldly;
 using Xunit;
 
@@ -404,6 +405,99 @@ namespace dvx.Tests
                 ConfigLoader.ResolveEnvironmentConfig(null, null, null, null, null));
 
             ex.Message.ShouldContain("--env");
+        }
+
+        // ── auth type ──────────────────────────────────────────────────────────
+
+        [Fact]
+        public void ResolveEnvironmentConfig_InteractiveFlag_WinsOverConfigAuthType()
+        {
+            var path = WriteConfig("""
+            {
+              "environments": [
+                { "name": "dev", "url": "https://dev.crm.dynamics.com",
+                  "clientId": "c1", "clientSecret": "s1" }
+              ]
+            }
+            """);
+            var config = ConfigLoader.TryLoad(path);
+
+            var env = ConfigLoader.ResolveEnvironmentConfig(
+                "dev", config, null, null, null, cliInteractiveAuth: true);
+
+            env.AuthType.ShouldBe(DataverseAuthType.Interactive);
+        }
+
+        [Fact]
+        public void ResolveEnvironmentConfig_Interactive_RequiresOnlyUrl()
+        {
+            var env = ConfigLoader.ResolveEnvironmentConfig(
+                envName: null, config: null,
+                cliUrl: "https://org.crm.dynamics.com",
+                cliClientId: null, cliClientSecret: null,
+                cliInteractiveAuth: true);
+
+            env.AuthType.ShouldBe(DataverseAuthType.Interactive);
+            env.Url.ShouldBe("https://org.crm.dynamics.com");
+        }
+
+        [Fact]
+        public void ResolveEnvironmentConfig_Interactive_NoUrl_ThrowsNamingUrl()
+        {
+            var ex = Should.Throw<InvalidOperationException>(() =>
+                ConfigLoader.ResolveEnvironmentConfig(
+                    envName: null, config: null,
+                    cliUrl: null, cliClientId: null, cliClientSecret: null,
+                    cliInteractiveAuth: true));
+
+            ex.Message.ShouldContain("--url");
+        }
+
+        [Fact]
+        public void ResolveEnvironmentConfig_Interactive_FromConfigAuthType_NeedsNoSecret()
+        {
+            var path = WriteConfig("""
+            {
+              "environments": [
+                { "name": "dev", "url": "https://dev.crm.dynamics.com", "authType": "interactive" }
+              ]
+            }
+            """);
+            var config = ConfigLoader.TryLoad(path);
+
+            var env = ConfigLoader.ResolveEnvironmentConfig("dev", config, null, null, null);
+
+            env.AuthType.ShouldBe(DataverseAuthType.Interactive);
+            env.Url.ShouldBe("https://dev.crm.dynamics.com");
+        }
+
+        [Fact]
+        public void Load_AuthType_ParsesCaseInsensitively()
+        {
+            var path = WriteConfig("""
+            {
+              "environments": [
+                { "name": "dev", "url": "https://dev.crm.dynamics.com", "authType": "Interactive" }
+              ]
+            }
+            """);
+
+            ConfigLoader.TryLoad(path)!.Environments[0].AuthType.ShouldBe(DataverseAuthType.Interactive);
+        }
+
+        [Fact]
+        public void Load_AuthType_DefaultsToClientSecret_WhenOmitted()
+        {
+            var path = WriteConfig("""
+            {
+              "environments": [
+                { "name": "dev", "url": "https://dev.crm.dynamics.com",
+                  "clientId": "c1", "clientSecret": "s1" }
+              ]
+            }
+            """);
+
+            ConfigLoader.TryLoad(path)!.Environments[0].AuthType.ShouldBe(DataverseAuthType.ClientSecret);
         }
 
         // ── webResources ───────────────────────────────────────────────────────

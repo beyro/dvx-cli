@@ -24,9 +24,10 @@ namespace dvx.Commands
             var verbose            = CommandOptions.Verbose();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
             var deleteOrphaned     = CommandOptions.DeleteOrphanedSteps();
+            var interactiveAuth    = CommandOptions.InteractiveAuth();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                dryRun, verbose, solutionUniqueName, deleteOrphaned);
+                dryRun, verbose, solutionUniqueName, deleteOrphaned, interactiveAuth);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -41,12 +42,13 @@ namespace dvx.Commands
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
                 var cliSolution = ctx.ParseResult.GetValueForOption(solutionUniqueName);
                 var delOrphaned = ctx.ParseResult.GetValueForOption(deleteOrphaned);
+                var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
 
                 try
                 {
                     var appConfig       = ConfigLoader.TryLoad(configPath);
                     var envConfig       = ConfigLoader.ResolveEnvironmentConfig(
-                        envName, appConfig, cliUrl, cliClientId, cliSecret);
+                        envName, appConfig, cliUrl, cliClientId, cliSecret, cliInteractive);
                     var configured      = ConfigLoader.ResolveConfiguredPublisherPrefix(appConfig, cliPrefix);
                     var solution        = ConfigLoader.ResolveSolutionUniqueName(appConfig, cliSolution);
                     var resolvedProject = ConfigLoader.ResolveProject(appConfig, projectPath);

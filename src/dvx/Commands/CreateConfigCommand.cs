@@ -15,6 +15,7 @@ namespace dvx.Commands
                 {
                   "name": "dev",
                   "url": "https://your-dev-org.crm4.dynamics.com",
+                  "authType": "clientSecret",
                   "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                   "clientSecret": "your-secret"
                 }

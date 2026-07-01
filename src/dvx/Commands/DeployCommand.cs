@@ -20,10 +20,11 @@ namespace dvx.Commands
             var project         = CommandOptions.Project();
             var publisherPrefix = CommandOptions.PublisherPrefix();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
+            var interactiveAuth = CommandOptions.InteractiveAuth();
             var verbose         = CommandOptions.Verbose();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                solutionUniqueName, verbose);
+                solutionUniqueName, interactiveAuth, verbose);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -35,13 +36,14 @@ namespace dvx.Commands
                 var projectPath  = ctx.ParseResult.GetValueForOption(project)!;
                 var pubPrefix    = ctx.ParseResult.GetValueForOption(publisherPrefix);
                 var cliSolution  = ctx.ParseResult.GetValueForOption(solutionUniqueName);
+                var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
                 var isVerbose    = ctx.ParseResult.GetValueForOption(verbose);
 
                 try
                 {
                     var appConfig   = ConfigLoader.TryLoad(configPath);
                     var envConfig   = ConfigLoader.ResolveEnvironmentConfig(
-                        envName, appConfig, cliUrl, cliClientId, cliSecret);
+                        envName, appConfig, cliUrl, cliClientId, cliSecret, cliInteractive);
                     var configured  = ConfigLoader.ResolveConfiguredPublisherPrefix(appConfig, pubPrefix);
                     var solution    = ConfigLoader.ResolveSolutionUniqueName(appConfig, cliSolution);
                     var resolvedProject = ConfigLoader.ResolveProject(appConfig, projectPath);

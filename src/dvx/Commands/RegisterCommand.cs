@@ -25,11 +25,12 @@ namespace dvx.Commands
             var verbose            = CommandOptions.Verbose();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
             var deleteOrphaned     = CommandOptions.DeleteOrphanedSteps();
+            var interactiveAuth    = CommandOptions.InteractiveAuth();
 
             // --project and --assembly-name are mutually exclusive; both optional — validated at runtime
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, assemblyName,
-                dryRun, verbose, solutionUniqueName, deleteOrphaned);
+                dryRun, verbose, solutionUniqueName, deleteOrphaned, interactiveAuth);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -44,6 +45,7 @@ namespace dvx.Commands
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
                 var cliSolution = ctx.ParseResult.GetValueForOption(solutionUniqueName);
                 var delOrphaned = ctx.ParseResult.GetValueForOption(deleteOrphaned);
+                var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
 
                 if (!string.IsNullOrEmpty(projectPath) && !string.IsNullOrEmpty(asmName))
                 {
@@ -57,7 +59,7 @@ namespace dvx.Commands
                 {
                     var appConfig = ConfigLoader.TryLoad(configPath);
                     var envConfig = ConfigLoader.ResolveEnvironmentConfig(
-                        envName, appConfig, cliUrl, cliClientId, cliSecret);
+                        envName, appConfig, cliUrl, cliClientId, cliSecret, cliInteractive);
                     var solution  = ConfigLoader.ResolveSolutionUniqueName(appConfig, cliSolution);
                     using var svc = DataverseClientFactory.Create(envConfig);
 
