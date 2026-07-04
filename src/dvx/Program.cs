@@ -11,6 +11,7 @@ plugin.AddCommand(DeployCommand.Build());
 plugin.AddCommand(RegisterCommand.Build(loggerFactory));
 plugin.AddCommand(SyncCommand.Build(loggerFactory));
 plugin.AddCommand(AdoptCommand.Build(loggerFactory));
+plugin.AddCommand(ReportCommand.Build(loggerFactory));
 root.AddCommand(plugin);
 
 var webresource = new Command("webresource", "Deploy and publish Dataverse web resources.");

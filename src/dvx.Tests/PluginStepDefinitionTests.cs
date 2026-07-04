@@ -91,5 +91,25 @@ namespace dvx.Tests
 
             pre.StepName.ShouldNotBe(post.StepName);
         }
+
+        [Fact]
+        public void ExecutionOrder_Default_IsOneAndNotExplicit()
+        {
+            var def = new PluginStepDefinition();
+            def.ExecutionOrder.ShouldBe(1);
+            def.IsExecutionOrderExplicit.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void ExecutionOrder_WhenSet_IsExplicit()
+        {
+            var def = new PluginStepDefinition { ExecutionOrder = 1 };
+            def.ExecutionOrder.ShouldBe(1);
+            def.IsExecutionOrderExplicit.ShouldBeTrue();
+
+            def = new PluginStepDefinition { ExecutionOrder = 5 };
+            def.ExecutionOrder.ShouldBe(5);
+            def.IsExecutionOrderExplicit.ShouldBeTrue();
+        }
     }
 }

@@ -83,12 +83,14 @@ namespace dvx.Services
                     Message             = message,
                     Stage               = stage,
                     Mode                = step.GetAttributeValue<OptionSetValue>("mode")?.Value ?? 0,
-                    ExecutionOrder      = step.GetAttributeValue<int>("rank"),
                     Description         = NullIfEmpty(step.GetAttributeValue<string>("description")),
                     FilteringAttributes = SplitCsv(step.GetAttributeValue<string>("filteringattributes")),
                     Configuration       = NullIfEmpty(step.GetAttributeValue<string>("configuration")),
                     RunAsUser           = ResolveImpersonation(step.GetAttributeValue<EntityReference>("impersonatinguserid"), meta.SystemUserId()),
                 };
+
+                var rank = step.GetAttributeValue<int>("rank");
+                if (rank != 1) def.ExecutionOrder = rank;
 
                 foreach (var img in LoadImages(step.Id))
                 {
