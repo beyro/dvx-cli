@@ -1,4 +1,4 @@
-using dvx.Output;
+using dvx.Utility;
 using Shouldly;
 using Xunit;
 
