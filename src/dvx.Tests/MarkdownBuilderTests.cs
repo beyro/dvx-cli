@@ -30,5 +30,20 @@ namespace dvx.Tests
             
             md.ToString().ShouldBe($"  Indented text{Environment.NewLine}{Environment.NewLine}");
         }
+
+        [Fact]
+        public void Table_Alignment_Works()
+        {
+            var md = new MarkdownBuilder();
+            var headers = new[] { "A", "Long Header" };
+            var rows = new List<string[]> { new[] { "Short", "Val" } };
+
+            md.Table(headers, rows);
+            var result = md.ToString();
+
+            result.ShouldContain("| A     | Long Header |");
+            result.ShouldContain("| ----- | ----------- |");
+            result.ShouldContain("| Short | Val         |");
+        }
     }
 }
