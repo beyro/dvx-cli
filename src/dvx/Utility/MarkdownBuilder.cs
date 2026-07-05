@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace dvx.Output
+namespace dvx.Utility
 {
     public class MarkdownBuilder
     {

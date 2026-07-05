@@ -1,6 +1,7 @@
 using System.Text;
 using dvx.Models;
 using dvx.Output;
+using dvx.Utility;
 
 namespace dvx.Services
 {
@@ -18,13 +19,13 @@ namespace dvx.Services
                 md.Quote("**⚠️ Warning:** All steps marked with an asterix (*) beside the Order number have no explicit execution order set. Their relative execution order within the same stage and mode is non-deterministic.");
             }
 
-            md.Heading(2, "By Message then Entity");
-            RenderGroupedView(md, list, d => d.Message, d => d.Entity, "Message", "Entity");
-
-            md.HorizontalLine();
-
             md.Heading(2, "By Entity then Message");
             RenderGroupedView(md, list, d => d.Entity, d => d.Message, "Entity", "Message");
+            
+            md.HorizontalLine();
+
+            md.Heading(2, "By Message then Entity");
+            RenderGroupedView(md, list, d => d.Message, d => d.Entity, "Message", "Entity");
 
             return md.ToString();
         }
@@ -76,27 +77,29 @@ namespace dvx.Services
         {
             var rows = new List<string[]>();
             int? lastStage = null;
+            int? lastMode = null;
 
             foreach (var step in steps)
             {
-                if (lastStage.HasValue && lastStage.Value != step.Stage)
+                if ((lastStage.HasValue && lastStage.Value != step.Stage) ||
+                    (lastMode.HasValue && lastMode != step.Mode))
                 {
-                    rows.Add(new[] { "", "", "", "", "" });
+                    rows.Add(["", "", "", "", ""]); // Add blank row between stages/steps
                 }
 
                 var order = step.IsExecutionOrderExplicit ? step.ExecutionOrder.ToString() : $"{step.ExecutionOrder}*";
                 var mode = step.Mode == 1 ? "Async" : "Sync";
 
-                rows.Add(new[]
-                {
+                rows.Add([
                     PluginStepDefinition.StageName(step.Stage),
                     order,
                     mode,
                     step.TypeFullName,
                     step.Description ?? "-"
-                });
+                ]);
 
                 lastStage = step.Stage;
+                lastMode = step.Mode;
             }
 
             return rows;
