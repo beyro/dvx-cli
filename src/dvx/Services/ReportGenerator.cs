@@ -1,5 +1,6 @@
 using System.Text;
 using dvx.Models;
+using dvx.Output;
 
 namespace dvx.Services
 {
@@ -7,28 +8,29 @@ namespace dvx.Services
     {
         public string GenerateMarkdown(IEnumerable<PluginStepDefinition> definitions)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("# Plugin Registration Report");
-            sb.AppendLine();
+            var md = new MarkdownBuilder();
+            md.Heading(1, "Plugin Registration Report");
 
             var list = definitions.ToList();
 
-            sb.AppendLine("## By Message then Entity");
-            sb.AppendLine();
-            RenderGroupedView(sb, list, d => d.Message, d => d.Entity, "Message", "Entity");
+            if (list.Any(d => !d.IsExecutionOrderExplicit))
+            {
+                md.Quote("**⚠️ Warning:** All steps marked with an asterix (*) beside the Order number have no explicit execution order set. Their relative execution order within the same stage and mode is non-deterministic.");
+            }
 
-            sb.AppendLine("---");
-            sb.AppendLine();
+            md.Heading(2, "By Message then Entity");
+            RenderGroupedView(md, list, d => d.Message, d => d.Entity, "Message", "Entity");
 
-            sb.AppendLine("## By Entity then Message");
-            sb.AppendLine();
-            RenderGroupedView(sb, list, d => d.Entity, d => d.Message, "Entity", "Message");
+            md.HorizontalLine();
 
-            return sb.ToString();
+            md.Heading(2, "By Entity then Message");
+            RenderGroupedView(md, list, d => d.Entity, d => d.Message, "Entity", "Message");
+
+            return md.ToString();
         }
 
         private void RenderGroupedView(
-            StringBuilder sb, 
+            MarkdownBuilder md, 
             List<PluginStepDefinition> definitions, 
             Func<PluginStepDefinition, string> primaryKey, 
             Func<PluginStepDefinition, string> secondaryKey,
@@ -41,8 +43,7 @@ namespace dvx.Services
 
             foreach (var primaryGroup in groups)
             {
-                sb.AppendLine($"### {primaryLabel}: {primaryGroup.Key}");
-                sb.AppendLine();
+                md.Heading(3, $"{primaryLabel}: {primaryGroup.Key}");
 
                 var secondaryGroups = primaryGroup
                     .GroupBy(secondaryKey)
@@ -50,37 +51,55 @@ namespace dvx.Services
 
                 foreach (var secondaryGroup in secondaryGroups)
                 {
-                    sb.AppendLine($"#### {secondaryLabel}: {secondaryGroup.Key}");
-                    sb.AppendLine();
+                    md.Heading(4, $"{secondaryLabel}: {secondaryGroup.Key}");
 
-                    var steps = secondaryGroup
-                        .OrderBy(d => d.Stage)
-                        .ThenBy(d => d.ExecutionOrder)
-                        .ToList();
-
-                    var unordered = steps.Where(d => !d.IsExecutionOrderExplicit).ToList();
-                    if (unordered.Any())
-                    {
-                        sb.AppendLine("> **⚠️ Warning:** The following plugins have no explicit execution order set. Their relative execution order within the same stage and mode is non-deterministic:");
-                        foreach (var u in unordered.Select(d => d.TypeFullName).Distinct())
-                        {
-                            sb.AppendLine($"> - {u}");
-                        }
-                        sb.AppendLine();
-                    }
-
-                    sb.AppendLine("| Stage | Order | Mode | Plugin Type | Description |");
-                    sb.AppendLine("| :--- | :--- | :--- | :--- | :--- |");
-
-                    foreach (var step in steps)
-                    {
-                        var order = step.IsExecutionOrderExplicit ? step.ExecutionOrder.ToString() : "1*";
-                        var mode = step.Mode == 1 ? "Async" : "Sync";
-                        sb.AppendLine($"| {PluginStepDefinition.StageName(step.Stage)} | {order} | {mode} | {step.TypeFullName} | {step.Description ?? "-"} |");
-                    }
-                    sb.AppendLine();
+                    RenderStepTable(md, secondaryGroup);
                 }
             }
+        }
+
+        private void RenderStepTable(MarkdownBuilder md, IEnumerable<PluginStepDefinition> steps)
+        {
+            var orderedSteps = steps
+                .OrderBy(d => d.Stage)
+                .ThenBy(d => d.Mode)
+                .ThenBy(d => d.ExecutionOrder)
+                .ToList();
+
+            var headers = new[] { "Stage", "Order", "Mode", "Plugin Type", "Description" };
+            var rows = PrepareTableRows(orderedSteps);
+            
+            md.Table(headers, rows);
+        }
+
+        private List<string[]> PrepareTableRows(List<PluginStepDefinition> steps)
+        {
+            var rows = new List<string[]>();
+            int? lastStage = null;
+
+            foreach (var step in steps)
+            {
+                if (lastStage.HasValue && lastStage.Value != step.Stage)
+                {
+                    rows.Add(new[] { "", "", "", "", "" });
+                }
+
+                var order = step.IsExecutionOrderExplicit ? step.ExecutionOrder.ToString() : $"{step.ExecutionOrder}*";
+                var mode = step.Mode == 1 ? "Async" : "Sync";
+
+                rows.Add(new[]
+                {
+                    PluginStepDefinition.StageName(step.Stage),
+                    order,
+                    mode,
+                    step.TypeFullName,
+                    step.Description ?? "-"
+                });
+
+                lastStage = step.Stage;
+            }
+
+            return rows;
         }
 
         public string GenerateCsv(IEnumerable<PluginStepDefinition> definitions)
