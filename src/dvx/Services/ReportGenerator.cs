@@ -110,7 +110,8 @@ namespace dvx.Services
             var sb = new StringBuilder();
             sb.AppendLine("Type,Entity,Message,Stage,Mode,ExecutionOrder,IsExplicit,Description");
 
-            foreach (var def in definitions.OrderBy(d => d.TypeFullName).ThenBy(d => d.Entity).ThenBy(d => d.Message))
+            foreach (var def in definitions.OrderBy(d => d.Entity).ThenBy(d => d.Message).ThenBy(d => d.Mode)
+                         .ThenBy(d => d.ExecutionOrder))
             {
                 var row = new[]
                 {
