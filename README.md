@@ -4,7 +4,8 @@ A CLI for deploying **code-first Dataverse / Power Platform artifacts** from sou
 Commands are grouped by artifact type:
 
 - **`dvx plugin …`** — decorate plugin classes with `[PluginStep]` and let dvx build the package,
-  upload it to Dataverse, and keep SDK Message Processing Step records in sync with your code.
+  upload it to Dataverse, and keep SDK Message Processing Step records in sync with your code. Also includes
+  a registration report command.
 - **`dvx webresource …`** — upsert and publish JS/CSS/HTML and other web resources from a folder
   and/or a manifest, optionally pruning ones that have been removed from source.
 - **`dvx config …`** — scaffold the `dvx.json` configuration file.
@@ -23,6 +24,7 @@ Commands are grouped by artifact type:
   - [plugin deploy](#plugin-deploy)
   - [plugin register](#plugin-register)
   - [plugin adopt](#plugin-adopt)
+  - [plugin report](#plugin-report)
   - [webresource sync](#webresource-sync)
   - [config create](#config-create)
 - [Web resources](#web-resources)
@@ -525,6 +527,39 @@ dvx plugin adopt --project <path> [options]
 
 ---
 
+### plugin report
+
+> Generate a registration report of plugins in the project in Markdown and CSV formats.
+> Scans the local project for `[PluginStep]` attributes and discovers registrations via reflection on the built assembly.
+
+```
+dvx plugin report [options]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--project` | | Path to the plugin `.csproj` file |
+| `--out`, `-o` | `reports` | Output directory for the generated reports |
+| `--filename`, `-n` | timestamped | Custom base filename for the reports |
+| `--types`, `-t` | `both` | Output types to include: `csv`, `md`, or `both` |
+| `--config` | auto-discovered | Path to config file |
+| `--verbose` | | Log build and discovery details |
+
+**What it does:**
+
+1. Runs `dotnet build` on the `.csproj` to ensure the assembly is up to date.
+2. Reflects the `.dll` for `[PluginStep]` attributes.
+3. Generates a report of all discovered plugin registrations.
+4. Saves the report in the specified output directory in Markdown (`.md`) and/or CSV (`.csv`) format.
+
+**Example:**
+
+```bash
+dvx plugin report --project ./src/MyPlugin/MyPlugin.csproj --out ./docs/reports
+```
+
+---
+
 ### webresource sync
 
 > Upsert and publish Dataverse web resources from a folder and/or a manifest. **Upsert-only by
@@ -963,6 +998,7 @@ PluginRegistrationTool/
 │   │   │   ├── RegisterCommand.cs         # dvx plugin register
 │   │   │   ├── SyncCommand.cs             # dvx plugin sync
 │   │   │   ├── AdoptCommand.cs            # dvx plugin adopt
+│   │   │   ├── ReportCommand.cs           # dvx plugin report
 │   │   │   ├── WebResourceSyncCommand.cs  # dvx webresource sync
 │   │   │   ├── CreateConfigCommand.cs     # dvx config create
 │   │   │   └── Shared/CommandOptions.cs   # Shared option definitions
