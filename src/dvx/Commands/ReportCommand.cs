@@ -27,7 +27,17 @@ namespace dvx.Commands
                 "Output directory for the generated reports.");
             var verbose = CommandOptions.Verbose();
 
-            cmd.AddOptions(project, config, output, verbose);
+            var filename = new Option<string?>(
+                new[] { "--filename", "-n" },
+                "Custom base filename for the reports. If omitted, a timestamped name is used.");
+
+            var types = new Option<string>(
+                new[] { "--types", "-t" },
+                () => "both",
+                "Output types to include: 'csv', 'md', or 'both' (default).")
+                .FromAmong("csv", "md", "both");
+
+            cmd.AddOptions(project, config, output, verbose, filename, types);
 
             cmd.SetHandler(async (InvocationContext ctx) =>
             {
@@ -35,6 +45,8 @@ namespace dvx.Commands
                 var configPath  = ctx.ParseResult.GetValueForOption(config);
                 var outDir      = ctx.ParseResult.GetValueForOption(output)!;
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
+                var customFilename = ctx.ParseResult.GetValueForOption(filename);
+                var reportTypes    = ctx.ParseResult.GetValueForOption(types)!;
 
                 try
                 {
@@ -53,22 +65,35 @@ namespace dvx.Commands
 
                     Out.Step("Generating", "reports...");
                     var generator = new ReportGenerator();
-                    var md        = generator.GenerateMarkdown(definitions);
-                    var csv       = generator.GenerateCsv(definitions);
+                    
+                    string baseName = !string.IsNullOrEmpty(customFilename) 
+                        ? customFilename 
+                        : $"plugin-report-{DateTime.Now:yyyyMMdd-HHmmss}";
 
                     if (!Directory.Exists(outDir))
                     {
                         Directory.CreateDirectory(outDir);
                     }
 
-                    var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-                    var mdFile    = Path.Combine(outDir, $"plugin-report-{timestamp}.md");
-                    var csvFile   = Path.Combine(outDir, $"plugin-report-{timestamp}.csv");
+                    var generatedFiles = new List<string>();
 
-                    await File.WriteAllTextAsync(mdFile, md);
-                    await File.WriteAllTextAsync(csvFile, csv);
+                    if (reportTypes is "md" or "both")
+                    {
+                        var md = generator.GenerateMarkdown(definitions);
+                        var mdFile = Path.Combine(outDir, $"{baseName}.md");
+                        await File.WriteAllTextAsync(mdFile, md);
+                        generatedFiles.Add(Path.GetFullPath(mdFile));
+                    }
 
-                    Out.Success("Reports generated:", $"{Path.GetFullPath(mdFile)}\n{Path.GetFullPath(csvFile)}");
+                    if (reportTypes is "csv" or "both")
+                    {
+                        var csv = generator.GenerateCsv(definitions);
+                        var csvFile = Path.Combine(outDir, $"{baseName}.csv");
+                        await File.WriteAllTextAsync(csvFile, csv);
+                        generatedFiles.Add(Path.GetFullPath(csvFile));
+                    }
+
+                    Out.Success("Reports generated:", string.Join("\n", generatedFiles));
                 }
                 catch (Exception ex)
                 {
