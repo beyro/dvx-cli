@@ -142,6 +142,18 @@ namespace dvx.Tests.Fixtures
         public void Execute(IServiceProvider serviceProvider) { }
     }
 
+    [PluginStep(Entity = "account", Message = "Create", Stage = Stage.PreOperation, ExecutionOrder = 10)]
+    public class TestPluginExplicitOrder : IPlugin
+    {
+        public void Execute(IServiceProvider serviceProvider) { }
+    }
+
+    [PluginStep(Entity = "account", Message = "Create", Stage = Stage.PreOperation)]
+    public class TestPluginImplicitOrder : IPlugin
+    {
+        public void Execute(IServiceProvider serviceProvider) { }
+    }
+
     // [CustomApi] takes precedence over [PluginStep] on the same class — must still be excluded.
     [CustomApi]
     [PluginStep("account", "Create", Stage.PostOperation)]
@@ -455,6 +467,28 @@ namespace dvx.Tests
             // even when a [PluginStep] attribute is also present.
             var defs = Discover();
             defs.ShouldNotContain(d => d.TypeFullName!.EndsWith(nameof(TestPluginCustomApiWithStep)));
+        }
+
+        // ── Execution Order Explicitness ───────────────────────────────────────
+
+        [Fact]
+        public void ExecutionOrder_WhenProvidedInAttribute_IsExplicit()
+        {
+            var def = Discover()
+                .Single(d => d.TypeFullName!.EndsWith(nameof(TestPluginExplicitOrder)));
+
+            def.ExecutionOrder.ShouldBe(10);
+            def.IsExecutionOrderExplicit.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void ExecutionOrder_WhenOmittedInAttribute_IsImplicit()
+        {
+            var def = Discover()
+                .Single(d => d.TypeFullName!.EndsWith(nameof(TestPluginImplicitOrder)));
+
+            def.ExecutionOrder.ShouldBe(1);
+            def.IsExecutionOrderExplicit.ShouldBeFalse();
         }
     }
 }

@@ -2,11 +2,21 @@ namespace dvx.Models
 {
     public class PluginStepDefinition
     {
+        private int? _executionOrder;
+
         public string   TypeFullName         { get; set; } = string.Empty;
         public string   Entity               { get; set; } = string.Empty;
         public string   Message              { get; set; } = string.Empty;
         public int      Stage                { get; set; }  // 10 / 20 / 40
-        public int      ExecutionOrder       { get; set; } = 1;
+
+        public int ExecutionOrder
+        {
+            get => _executionOrder ?? 1;
+            set => _executionOrder = value;
+        }
+
+        public bool IsExecutionOrderExplicit => _executionOrder.HasValue;
+
         public int      Mode                 { get; set; }  // 0 = sync, 1 = async
         public string?  Description          { get; set; }
         /// <summary>

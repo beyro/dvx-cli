@@ -17,8 +17,8 @@
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>1.8.0:
-- Added interactive login via `authType` in config file or `--interactive-auth` flag. </PackageReleaseNotes>
+    <PackageReleaseNotes>1.9.0:
+- New `report` command to generate a report of plugin registrations in Markdown and CSV</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

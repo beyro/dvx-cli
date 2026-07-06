@@ -297,8 +297,8 @@ namespace dvx.Services
                 StageExpr(def.Stage),
             };
 
-            if (def.ExecutionOrder != 1) args.Add($"ExecutionOrder = {def.ExecutionOrder}");
-            if (def.Mode == 1)           args.Add("Async = true");
+            if (def.IsExecutionOrderExplicit)           args.Add($"ExecutionOrder = {def.ExecutionOrder}");
+            if (def.Mode == 1)                          args.Add("Async = true");
             if (!string.IsNullOrEmpty(def.Description)) args.Add($"Description = {Lit(def.Description!)}");
 
             if (def.RunAsUser is { } ru)
