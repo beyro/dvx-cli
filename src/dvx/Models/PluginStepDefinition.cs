@@ -26,6 +26,8 @@ namespace dvx.Models
         /// Any other Guid = impersonate that specific user.
         /// </summary>
         public Guid?    RunAsUser            { get; set; } = null;
+        
+        public string RunAsUserString => (RunAsUser == null ? "Calling user" : RunAsUser == Guid.Empty ? "SYSTEM" : RunAsUser.ToString()) ?? "";
         public string[] FilteringAttributes  { get; set; } = Array.Empty<string>();
 
         /// <summary>Unsecure config string (sdkmessageprocessingstep.configuration). null = not set.</summary>

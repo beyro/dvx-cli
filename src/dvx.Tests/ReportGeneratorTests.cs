@@ -103,15 +103,16 @@ namespace dvx.Tests
                     Stage = 20, 
                     Mode = 0, 
                     ExecutionOrder = 5,
-                    Description = "Some desc"
+                    Description = "Some desc",
+                    RunAsUser = Guid.Empty
                 }
             };
 
             var gen = new ReportGenerator();
             var csv = gen.GenerateCsv(definitions);
 
-            csv.ShouldContain("Type,Entity,Message,Stage,Mode,ExecutionOrder,IsExplicit,Description");
-            csv.ShouldContain("MyPlugin,account,Create,PreOperation,Sync,5,True,Some desc");
+            csv.ShouldContain("Type,Entity,Message,Stage,Mode,ExecutionOrder,IsExplicit,Description,RunsAs");
+            csv.ShouldContain("MyPlugin,account,Create,PreOperation,Sync,5,True,Some desc,SYSTEM");
         }
         
         [Fact]
