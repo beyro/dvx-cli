@@ -117,28 +117,28 @@ implement until green. Task 3 is a pure refactor, so its "red" step is the exist
 - [x] Re-run `dotnet test --filter PackageDeployerTests` — confirm still pass (no behaviour change).
 
 ### Task 4 — `AssemblyDeployer`
-- [ ] **Red:** Write `AssemblyDeployerTests` (NSubstitute `IOrganizationService`):
+- [x] **Red:** Write `AssemblyDeployerTests` (NSubstitute `IOrganizationService`):
       create when absent; update when present; multiple matches throws; dry-run create reports
       "would create" and issues no `Create`/`Update`; returns record id. Run
       `dotnet test --filter AssemblyDeployerTests` — confirm failure.
-- [ ] **Green:** Implement resolve-by-name (throw on >1), create/update `content`, return id.
-- [ ] Run `dotnet test --filter AssemblyDeployerTests` — confirm pass.
+- [x] **Green:** Implement resolve-by-name (throw on >1), create/update `content`, return id.
+- [x] Run `dotnet test --filter AssemblyDeployerTests` — confirm pass.
 
 ### Task 5 — Solution membership
-- [ ] **Red:** Add a test asserting the `AddSolutionComponent` request shape for
+- [x] **Red:** Add a test asserting the `AddSolutionComponent` request shape for
       `AddAssemblyToSolution` (component type 91) — confirm failure.
-- [ ] **Green:** Add `SolutionService.AddAssemblyToSolution` (component type 91).
-- [ ] Run the solution-service tests — confirm pass.
+- [x] **Green:** Add `SolutionService.AddAssemblyToSolution` (component type 91).
+- [x] Run the solution-service tests — confirm pass.
 
 ### Task 6 — Command wiring
-- [ ] **Red:** Add command-level tests for mode selection (if feasible with current test seams) —
-      confirm failure.
-- [ ] **Green:** `DeployCommand` / `SyncCommand`: resolve mode, build accordingly, select deployer,
+- [x] **Red:** Add command-level tests for mode selection (via the extracted `PluginDeploymentPlan`
+      seam) — confirm failure.
+- [x] **Green:** `DeployCommand` / `SyncCommand`: resolve mode, build accordingly, select deployer,
       warn on artifact/mode mismatch (E18), add assembly to solution when `--solution-unique-name` set.
 - [ ] Run the command tests — confirm pass.
 
 ### Task 7 — Docs
-- [ ] README: document `--plugin-build-mode`, `pluginBuildMode` config field, assembly-mode
+- [x] README: document `--plugin-build-mode`, `pluginBuildMode` config field, assembly-mode
       create/update semantics, and solution-membership behaviour.
 
 ## Verification

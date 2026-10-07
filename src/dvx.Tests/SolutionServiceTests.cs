@@ -94,7 +94,27 @@ namespace dvx.Tests
             svc.Received(1).Execute(Arg.Any<OrganizationRequest>());
         }
 
-        // ── AddWebResourceToSolution ───────────────────────────────────────────
+        // ── AddWebResourceToSolution ────────────────────────────────
+
+        [Fact]
+        public void AddAssemblyToSolution_ExecutesRequestWithComponentType91()
+        {
+            var svc = Substitute.For<IOrganizationService>();
+            var id  = Guid.NewGuid();
+            OrganizationRequest? captured = null;
+            svc.Execute(Arg.Do<OrganizationRequest>(r => captured = r));
+
+            new SolutionService(svc).AddAssemblyToSolution(id, "MySolution");
+
+            captured.ShouldNotBeNull();
+            captured!.RequestName.ShouldBe("AddSolutionComponent");
+            captured["ComponentId"].ShouldBe(id);
+            captured["ComponentType"].ShouldBe(91);
+            captured["SolutionUniqueName"].ShouldBe("MySolution");
+            captured["AddRequiredComponents"].ShouldBe(false);
+        }
+
+        // ── AddWebResourceToSolution ───────────────────────────────────────────────
 
         [Fact]
         public void AddWebResourceToSolution_ExecutesRequestWithComponentType61()
