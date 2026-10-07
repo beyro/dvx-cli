@@ -94,7 +94,7 @@ namespace dvx.Tests
             svc.Received(1).Execute(Arg.Any<OrganizationRequest>());
         }
 
-        // ── AddWebResourceToSolution ────────────────────────────────
+        // ── AddAssemblyToSolution ──────────────────────────────────────────────
 
         [Fact]
         public void AddAssemblyToSolution_ExecutesRequestWithComponentType91()

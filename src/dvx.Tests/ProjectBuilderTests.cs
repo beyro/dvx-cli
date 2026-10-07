@@ -31,23 +31,23 @@ namespace dvx.Tests
         }
 
         [Fact]
-        public void BuildAssembly_DllOnly_ReturnsArtifactWithoutRequiringNupkg()
+        public void BuildAllowingMissingPackage_DllOnly_ReturnsArtifactWithoutRequiringNupkg()
         {
             File.WriteAllText(Path.Combine(ReleaseDir, "MyPlugin.dll"), "dll");
 
-            var result = new NoBuildProjectBuilder().BuildAssembly(_projectPath);
+            var result = new NoBuildProjectBuilder().BuildAllowingMissingPackage(_projectPath);
 
             result.DllPath.ShouldBe(Path.Combine(ReleaseDir, "MyPlugin.dll"));
             result.NupkgPath.ShouldBeNull();
         }
 
         [Fact]
-        public void BuildAssembly_WithNupkg_ReturnsBoth()
+        public void BuildAllowingMissingPackage_WithNupkg_ReturnsBoth()
         {
             File.WriteAllText(Path.Combine(ReleaseDir, "MyPlugin.1.0.0.nupkg"), "pkg");
             File.WriteAllText(Path.Combine(ReleaseDir, "MyPlugin.dll"), "dll");
 
-            var result = new NoBuildProjectBuilder().BuildAssembly(_projectPath);
+            var result = new NoBuildProjectBuilder().BuildAllowingMissingPackage(_projectPath);
 
             result.NupkgPath.ShouldBe(Path.Combine(ReleaseDir, "MyPlugin.1.0.0.nupkg"));
             result.DllPath.ShouldBe(Path.Combine(ReleaseDir, "MyPlugin.dll"));
@@ -74,11 +74,11 @@ namespace dvx.Tests
         }
 
         [Fact]
-        public void BuildAssembly_MissingDll_Throws()
+        public void BuildAllowingMissingPackage_MissingDll_Throws()
         {
             File.WriteAllText(Path.Combine(ReleaseDir, "MyPlugin.1.0.0.nupkg"), "pkg");
 
-            Should.Throw<InvalidOperationException>(() => new NoBuildProjectBuilder().BuildAssembly(_projectPath));
+            Should.Throw<InvalidOperationException>(() => new NoBuildProjectBuilder().BuildAllowingMissingPackage(_projectPath));
         }
     }
 }

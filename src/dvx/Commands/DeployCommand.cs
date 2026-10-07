@@ -1,9 +1,7 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.Reflection;
 using dvx.Commands.Shared;
 using dvx.Config;
-using dvx.Models;
 using dvx.Output;
 using dvx.Services;
 
@@ -13,7 +11,7 @@ namespace dvx.Commands
     {
         public static Command Build()
         {
-            var cmd             = new Command("deploy", "Build and push the plugin package to Dataverse.");
+            var cmd             = new Command("deploy", "Build and deploy the plugin to Dataverse.");
             var env             = CommandOptions.Env();
             var config          = CommandOptions.Config();
             var url             = CommandOptions.Url();
@@ -60,28 +58,8 @@ namespace dvx.Commands
                         configured, solution, new SolutionPublisherResolver(svc).GetCustomizationPrefix);
                     if (prefixWarning is not null) Out.Warn(prefixWarning);
 
-                    Out.Step("Building", resolvedProject);
-                    var build = new ProjectBuilder().BuildAssembly(resolvedProject);
-                    var plan  = PluginDeploymentPlan.Resolve(mode, build);
-                    if (plan.Warning is not null) Out.Warn(plan.Warning);
-
-                    var assemblyName = Path.GetFileNameWithoutExtension(build.DllPath);
-                    var uniqueName   = $"{prefix}_{assemblyName}";
-                    var version      = AssemblyName.GetAssemblyName(build.DllPath).Version;
-                    var artifact     = new PluginArtifact(plan.ArtifactPath, assemblyName, uniqueName, version);
-                    Out.Success("Built", Path.GetFileName(plan.ArtifactPath));
-
-                    Out.Step("Deploying", $"to {envConfig.Url}");
-                    IPluginDeployer deployer = mode == PluginBuildMode.Package
-                        ? new PackageDeployer(svc)
-                        : new AssemblyDeployer(svc);
-                    var assemblyId = deployer.Deploy(artifact, isVerbose, isDryRun);
-
-                    if (mode == PluginBuildMode.Assembly && solution is not null && !isDryRun && assemblyId != Guid.Empty)
-                        new SolutionService(svc).AddAssemblyToSolution(assemblyId, solution, isVerbose);
-
-                    Out.Success(isDryRun ? "Resolved assembly (upload skipped — dry run)." : "Deployed.",
-                        $"Assembly ID: {assemblyId}");
+                    PluginDeployRunner.BuildAndDeploy(svc, mode, solution, envConfig.Url,
+                        resolvedProject, prefix, isVerbose, isDryRun);
                 }
                 catch (Exception ex)
                 {

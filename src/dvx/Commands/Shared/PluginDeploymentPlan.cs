@@ -28,5 +28,16 @@ namespace dvx.Commands.Shared
                     ? "Assembly mode selected, but the project also produced a .nupkg — deploying the DLL directly and ignoring the .nupkg."
                     : null);
         }
+
+        /// <summary>
+        /// True when a deployed assembly should be added to the target solution: assembly mode only,
+        /// with a solution configured and a real (non-dry-run) assembly id.
+        /// </summary>
+        public static bool ShouldAddAssemblyToSolution(
+            PluginBuildMode mode, string? solution, bool dryRun, Guid assemblyId)
+            => mode == PluginBuildMode.Assembly
+               && solution is not null
+               && !dryRun
+               && assemblyId != Guid.Empty;
     }
 }

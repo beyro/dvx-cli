@@ -33,6 +33,12 @@
 > **Resolution note (implemented):** package mode is **strict** — a missing `.nupkg` is a hard error,
 > not a warning, so the deploy never silently switches to the DLL. The E18 warning therefore applies
 > only to assembly mode on a project that also emitted a `.nupkg` (deploy the DLL, ignore the package).
+>
+> **Post-review refinements:** the duplicated command wiring was extracted into `PluginDeployRunner`;
+> `ProjectBuilder.BuildAssembly` was renamed `BuildAllowingMissingPackage`; the `Version` is computed
+> only in assembly mode (the package path no longer opens the DLL); the solution-add guard is the
+> tested `PluginDeploymentPlan.ShouldAddAssemblyToSolution`; and the package-only `Deploy(string,string)`
+> overload was removed (the string callers were test-only).
 
 ## Architecture
 
@@ -58,8 +64,11 @@ StepRegistrar.Sync(assemblyId, …)   ← unchanged
 - `src/dvx/Services/IPluginDeployer.cs` — interface + `PluginArtifact` record
 - `src/dvx/Services/PluginDeployerBase.cs` — shared skeleton
 - `src/dvx/Services/AssemblyDeployer.cs`
+- `src/dvx/Commands/Shared/PluginDeploymentPlan.cs` — mode/artifact selection + solution-membership predicate
+- `src/dvx/Commands/Shared/PluginDeployRunner.cs` — shared build-and-deploy step for deploy/sync
 - `src/dvx.Tests/AssemblyDeployerTests.cs`
 - `src/dvx.Tests/ProjectBuilderTests.cs`
+- `src/dvx.Tests/PluginDeploymentPlanTests.cs`
 
 **Modify**
 - `src/dvx/Services/PackageDeployer.cs` — implement `IPluginDeployer`, derive from base
@@ -81,7 +90,7 @@ public sealed record PluginArtifact(
     string  Path,          // .nupkg (Package) or .dll (Assembly)
     string  AssemblyName,  // bare assembly name; record name for Assembly mode, stem for Package unique name
     string  UniqueName,    // {prefix}_{assemblyName} — Package lookup key
-    Version Version);      // from the built DLL's AssemblyVersion (Assembly mode)
+    Version? Version);     // from the built DLL's AssemblyVersion (Assembly mode; null for Package)
 
 public interface IPluginDeployer
 {
@@ -139,7 +148,8 @@ implement until green. Task 3 is a pure refactor, so its "red" step is the exist
       seam) — confirm failure.
 - [x] **Green:** `DeployCommand` / `SyncCommand`: resolve mode, build accordingly, select deployer,
       warn on artifact/mode mismatch (E18), add assembly to solution when `--solution-unique-name` set.
-- [ ] Run the command tests — confirm pass.
+- [x] Run the command tests — confirm pass (deployer selection + solution-membership predicate are
+      covered by `PluginDeploymentPlanTests`).
 
 ### Task 7 — Docs
 - [x] README: document `--plugin-build-mode`, `pluginBuildMode` config field, assembly-mode

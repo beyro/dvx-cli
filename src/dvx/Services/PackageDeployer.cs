@@ -16,13 +16,6 @@ namespace dvx.Services
     {
         public PackageDeployer(IOrganizationService svc) : base(svc) { }
 
-        /// <summary>
-        /// Backward-compatible entry point taking the raw package paths used by the commands.
-        /// Delegates to the shared <see cref="PluginDeployerBase.Deploy"/> skeleton.
-        /// </summary>
-        public Guid Deploy(string nupkgPath, string packageUniqueName, bool verbose = false, bool dryRun = false)
-            => Deploy(new PluginArtifact(nupkgPath, packageUniqueName, packageUniqueName, null), verbose, dryRun);
-
         // ── Skeleton hooks ─────────────────────────────────────────────────────
 
         protected override Guid? ResolveExistingId(PluginArtifact artifact, bool verbose)

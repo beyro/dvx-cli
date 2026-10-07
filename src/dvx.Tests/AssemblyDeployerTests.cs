@@ -41,6 +41,7 @@ namespace dvx.Tests
             try
             {
                 var result = new AssemblyDeployer(svc).Deploy(Artifact(dll));
+                var bytes  = File.ReadAllBytes(dll);
 
                 result.ShouldBe(newId);
                 svc.Received(1).Create(Arg.Is<Entity>(e =>
@@ -50,7 +51,7 @@ namespace dvx.Tests
                     ((OptionSetValue)e["isolationmode"]).Value == 2 &&
                     (string)e["culture"] == "neutral" &&
                     (string)e["version"] == "1.2.3.4" &&
-                    e.Contains("content")));
+                    (string)e["content"] == Convert.ToBase64String(bytes)));
                 svc.DidNotReceive().Update(Arg.Any<Entity>());
             }
             finally
@@ -69,12 +70,14 @@ namespace dvx.Tests
             try
             {
                 var result = new AssemblyDeployer(svc).Deploy(Artifact(dll));
+                var bytes  = File.ReadAllBytes(dll);
 
                 result.ShouldBe(existingId);
                 svc.Received(1).Update(Arg.Is<Entity>(e =>
                     e.LogicalName == "pluginassembly" &&
                     e.Id == existingId &&
-                    e.Contains("content")));
+                    (string)e["version"] == "1.2.3.4" &&
+                    (string)e["content"] == Convert.ToBase64String(bytes)));
                 svc.DidNotReceive().Create(Arg.Any<Entity>());
             }
             finally
@@ -96,7 +99,7 @@ namespace dvx.Tests
         }
 
         [Fact]
-        public void Deploy_DryRun_NotFound_ReportsWouldCreate_NoWrites()
+        public void Deploy_DryRun_NotFound_WritesNothing_ReturnsEmpty()
         {
             var svc = BuildSvc();
 

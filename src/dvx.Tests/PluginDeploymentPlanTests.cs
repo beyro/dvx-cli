@@ -47,5 +47,37 @@ namespace dvx.Tests
             plan.Warning.ShouldNotBeNull();
             plan.Warning!.ShouldContain(".nupkg");
         }
+
+        // ── ShouldAddAssemblyToSolution ────────────────────────────────────────
+
+        [Fact]
+        public void ShouldAddAssemblyToSolution_AssemblyMode_WithSolutionAndRealId_IsTrue()
+            => PluginDeploymentPlan
+                .ShouldAddAssemblyToSolution(PluginBuildMode.Assembly, "MySolution", dryRun: false, Guid.NewGuid())
+                .ShouldBeTrue();
+
+        [Fact]
+        public void ShouldAddAssemblyToSolution_PackageMode_IsFalse()
+            => PluginDeploymentPlan
+                .ShouldAddAssemblyToSolution(PluginBuildMode.Package, "MySolution", dryRun: false, Guid.NewGuid())
+                .ShouldBeFalse();
+
+        [Fact]
+        public void ShouldAddAssemblyToSolution_NoSolution_IsFalse()
+            => PluginDeploymentPlan
+                .ShouldAddAssemblyToSolution(PluginBuildMode.Assembly, null, dryRun: false, Guid.NewGuid())
+                .ShouldBeFalse();
+
+        [Fact]
+        public void ShouldAddAssemblyToSolution_DryRun_IsFalse()
+            => PluginDeploymentPlan
+                .ShouldAddAssemblyToSolution(PluginBuildMode.Assembly, "MySolution", dryRun: true, Guid.NewGuid())
+                .ShouldBeFalse();
+
+        [Fact]
+        public void ShouldAddAssemblyToSolution_EmptyAssemblyId_IsFalse()
+            => PluginDeploymentPlan
+                .ShouldAddAssemblyToSolution(PluginBuildMode.Assembly, "MySolution", dryRun: false, Guid.Empty)
+                .ShouldBeFalse();
     }
 }

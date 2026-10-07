@@ -442,7 +442,7 @@ dvx plugin sync --project ./src/MyPlugin/MyPlugin.csproj --dry-run
 
 ### plugin deploy
 
-> Build the project and push the plugin package to Dataverse. Does not touch step registrations.
+> Build the project and deploy the plugin to Dataverse — the NuGet package, or the bare assembly with `--plugin-build-mode assembly`. Does not touch step registrations.
 
 ```
 dvx plugin deploy --project <path> [options]
@@ -1001,7 +1001,7 @@ dvx reads and writes the following Dataverse tables:
 | Table (logical name) | Purpose |
 |---|---|
 | `pluginpackage` | Stores the plugin package (nupkg) in its `content` column. Queried by `uniquename`, then updated with the new `.nupkg` content on deploy. |
-| `pluginassembly` | Child record created by Dataverse when it processes a plugin package. Queried after deploy to get the ID for step registration. Also queried by `--assembly-name` to download content bytes. |
+| `pluginassembly` | The plugin assembly. In **package** mode this is a child record Dataverse creates when it processes a plugin package (queried after deploy to get the ID for step registration). In **assembly** mode dvx creates (or updates) it directly from the built `.dll`. Also queried by `--assembly-name` to download content bytes. |
 | `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. |
 | `customapi` | Queried by `adopt` to identify Custom API registrations (by `plugintypeid` / `sdkmessageid`) so their steps are skipped rather than scaffolded as `[PluginStep]`. |
 | `sdkmessage` | Lookup table for message names (`Create`, `Update`, `Delete`, …). Loaded once and cached per run. |

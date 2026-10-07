@@ -25,7 +25,7 @@ namespace dvx.Services
         /// emit no <c>.nupkg</c> (bare plugin assemblies deployed straight to <c>pluginassembly</c>).
         /// The <c>.nupkg</c> path is null when the project does not produce one.
         /// </summary>
-        public BuildResult BuildAssembly(string projectPath)
+        public BuildResult BuildAllowingMissingPackage(string projectPath)
         {
             EnsureProjectExists(projectPath);
             RunBuild(projectPath);
