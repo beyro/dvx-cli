@@ -291,6 +291,51 @@ namespace dvx.Tests
             ConfigLoader.ResolveSolutionUniqueName(config, "   ").ShouldBeNull();
         }
 
+        // ── pluginBuildMode ────────────────────────────────────────────────────
+
+        [Fact]
+        public void Load_WithPluginBuildMode_PopulatesField()
+        {
+            var path = WriteConfig("""{ "environments": [], "pluginBuildMode": "assembly" }""");
+            ConfigLoader.TryLoad(path)!.PluginBuildMode.ShouldBe(PluginBuildMode.Assembly);
+        }
+
+        [Fact]
+        public void Load_WithoutPluginBuildMode_IsNull()
+        {
+            var path = WriteConfig("""{ "environments": [] }""");
+            ConfigLoader.TryLoad(path)!.PluginBuildMode.ShouldBeNull();
+        }
+
+        [Fact]
+        public void ResolvePluginBuildMode_CliOverrideTakesPriority()
+        {
+            var path   = WriteConfig("""{ "environments": [], "pluginBuildMode": "package" }""");
+            var config = ConfigLoader.TryLoad(path);
+
+            ConfigLoader.ResolvePluginBuildMode(config, PluginBuildMode.Assembly)
+                .ShouldBe(PluginBuildMode.Assembly);
+        }
+
+        [Fact]
+        public void ResolvePluginBuildMode_FallsBackToConfig()
+        {
+            var path   = WriteConfig("""{ "environments": [], "pluginBuildMode": "assembly" }""");
+            var config = ConfigLoader.TryLoad(path);
+
+            ConfigLoader.ResolvePluginBuildMode(config, null).ShouldBe(PluginBuildMode.Assembly);
+        }
+
+        [Fact]
+        public void ResolvePluginBuildMode_NeitherSet_DefaultsToPackage()
+        {
+            var path   = WriteConfig("""{ "environments": [] }""");
+            var config = ConfigLoader.TryLoad(path);
+
+            ConfigLoader.ResolvePluginBuildMode(config, null).ShouldBe(PluginBuildMode.Package);
+            ConfigLoader.ResolvePluginBuildMode(null, null).ShouldBe(PluginBuildMode.Package);
+        }
+
         // ── defaultEnvironment ─────────────────────────────────────────────────
 
         [Fact]

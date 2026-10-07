@@ -62,13 +62,13 @@ namespace dvx.Commands
                     Out.Step("Building", resolvedProject);
                     var build        = new ProjectBuilder().Build(resolvedProject);
                     var assemblyName = Path.GetFileNameWithoutExtension(build.DllPath);
-                    Out.Success("Built", Path.GetFileName(build.NupkgPath));
+                    Out.Success("Built", Path.GetFileName(build.NupkgPath)!);
 
                     // ── Deploy ──────────────────────────────────────────────
                     Out.Step("Deploying", $"to {envConfig.Url}");
                     var uniqueName = $"{prefix}_{assemblyName}";
                     var deployer   = new PackageDeployer(svc);
-                    var assemblyId = deployer.Deploy(build.NupkgPath, uniqueName, isVerbose, isDryRun);
+                    var assemblyId = deployer.Deploy(build.NupkgPath!, uniqueName, isVerbose, isDryRun);
                     Out.Success(isDryRun ? "Resolved assembly (upload skipped — dry run)." : "Deployed.",
                         $"Assembly ID: {assemblyId}");
 
