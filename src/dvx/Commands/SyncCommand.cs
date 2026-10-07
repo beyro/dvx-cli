@@ -77,12 +77,12 @@ namespace dvx.Commands
 
                     // ── Deploy ──────────────────────────────────────────────
                     Out.Step("Deploying", $"to {envConfig.Url}");
-                    IPluginDeployer deployer = plan.Mode == PluginBuildMode.Package
+                    IPluginDeployer deployer = mode == PluginBuildMode.Package
                         ? new PackageDeployer(svc)
                         : new AssemblyDeployer(svc);
                     var assemblyId = deployer.Deploy(artifact, isVerbose, isDryRun);
 
-                    if (plan.Mode == PluginBuildMode.Assembly && solution is not null && !isDryRun && assemblyId != Guid.Empty)
+                    if (mode == PluginBuildMode.Assembly && solution is not null && !isDryRun && assemblyId != Guid.Empty)
                         new SolutionService(svc).AddAssemblyToSolution(assemblyId, solution, isVerbose);
 
                     Out.Success(isDryRun ? "Resolved assembly (upload skipped — dry run)." : "Deployed.",

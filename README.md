@@ -372,9 +372,10 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 
 Both modes still run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
 
-**When the mode and the build output disagree** — e.g. `package` mode selected but the project
-emitted no `.nupkg`, or `assembly` mode on a project that also produced one — dvx prints a warning
-and deploys the artifact that is actually available.
+**Package mode is strict:** if `package` mode is selected but the build emits no `.nupkg`, the
+command **fails** rather than falling back to the DLL — pass `--plugin-build-mode assembly` to
+intentionally deploy a bare assembly. Conversely, `assembly` mode on a project that also produced a
+`.nupkg` prints a warning and deploys the DLL, ignoring the package.
 
 When `--solution-unique-name` (or `solutionUniqueName`) is set, **assembly** mode adds the deployed
 assembly to that solution as a component.

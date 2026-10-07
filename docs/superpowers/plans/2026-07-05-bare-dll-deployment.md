@@ -30,6 +30,10 @@
 | F21–F22 | NSubstitute-based tests mirroring `PackageDeployerTests`; add `ProjectBuilder` tests |
 | F23 | Update README |
 
+> **Resolution note (implemented):** package mode is **strict** — a missing `.nupkg` is a hard error,
+> not a warning, so the deploy never silently switches to the DLL. The E18 warning therefore applies
+> only to assembly mode on a project that also emitted a `.nupkg` (deploy the DLL, ignore the package).
+
 ## Architecture
 
 ```

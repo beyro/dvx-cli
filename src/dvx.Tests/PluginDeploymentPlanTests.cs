@@ -15,20 +15,18 @@ namespace dvx.Tests
         {
             var plan = PluginDeploymentPlan.Resolve(PluginBuildMode.Package, Build(@"C:\out\MyPlugin.1.0.0.nupkg"));
 
-            plan.Mode.ShouldBe(PluginBuildMode.Package);
             plan.ArtifactPath.ShouldBe(@"C:\out\MyPlugin.1.0.0.nupkg");
             plan.Warning.ShouldBeNull();
         }
 
         [Fact]
-        public void PackageMode_WithoutNupkg_FallsBackToAssembly_WithWarning()
+        public void PackageMode_WithoutNupkg_Throws()
         {
-            var plan = PluginDeploymentPlan.Resolve(PluginBuildMode.Package, Build(null));
+            var ex = Should.Throw<InvalidOperationException>(() =>
+                PluginDeploymentPlan.Resolve(PluginBuildMode.Package, Build(null)));
 
-            plan.Mode.ShouldBe(PluginBuildMode.Assembly);
-            plan.ArtifactPath.ShouldBe(@"C:\out\MyPlugin.dll");
-            plan.Warning.ShouldNotBeNull();
-            plan.Warning!.ShouldContain(".nupkg");
+            ex.Message.ShouldContain(".nupkg");
+            ex.Message.ShouldContain("assembly");
         }
 
         [Fact]
@@ -36,7 +34,6 @@ namespace dvx.Tests
         {
             var plan = PluginDeploymentPlan.Resolve(PluginBuildMode.Assembly, Build(null));
 
-            plan.Mode.ShouldBe(PluginBuildMode.Assembly);
             plan.ArtifactPath.ShouldBe(@"C:\out\MyPlugin.dll");
             plan.Warning.ShouldBeNull();
         }
@@ -46,7 +43,6 @@ namespace dvx.Tests
         {
             var plan = PluginDeploymentPlan.Resolve(PluginBuildMode.Assembly, Build(@"C:\out\MyPlugin.1.0.0.nupkg"));
 
-            plan.Mode.ShouldBe(PluginBuildMode.Assembly);
             plan.ArtifactPath.ShouldBe(@"C:\out\MyPlugin.dll");
             plan.Warning.ShouldNotBeNull();
             plan.Warning!.ShouldContain(".nupkg");

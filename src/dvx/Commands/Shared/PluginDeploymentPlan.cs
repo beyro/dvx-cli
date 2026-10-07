@@ -4,26 +4,29 @@ using dvx.Services;
 namespace dvx.Commands.Shared
 {
     /// <summary>
-    /// Maps a requested <see cref="PluginBuildMode"/> and the artifacts a build produced onto the
-    /// mode and artifact actually deployed, warning when the two disagree (e.g. package mode
-    /// selected for a project that emitted no <c>.nupkg</c>).
+    /// Selects the build artifact to upload for the requested <see cref="PluginBuildMode"/> and
+    /// surfaces a warning when the mode and the produced artifacts disagree (E18).
+    /// Strict — package mode fails when the build emits no <c>.nupkg</c> rather than falling back
+    /// to the DLL.
     /// </summary>
-    public sealed record PluginDeploymentPlan(PluginBuildMode Mode, string ArtifactPath, string? Warning)
+    public sealed record PluginDeploymentPlan(string ArtifactPath, string? Warning)
     {
-        public static PluginDeploymentPlan Resolve(PluginBuildMode requested, BuildResult build)
+        public static PluginDeploymentPlan Resolve(PluginBuildMode mode, BuildResult build)
         {
-            if (requested == PluginBuildMode.Package && build.NupkgPath is not null)
-                return new(PluginBuildMode.Package, build.NupkgPath, null);
+            if (mode == PluginBuildMode.Package)
+            {
+                if (build.NupkgPath is null)
+                    throw new InvalidOperationException(
+                        "Package mode requires a .nupkg, but the build produced none. " +
+                        "Use --plugin-build-mode assembly to deploy a bare plugin assembly.");
 
-            if (requested == PluginBuildMode.Package)
-                return new(PluginBuildMode.Assembly, build.DllPath,
-                    "Package mode selected, but the project produced no .nupkg — deploying the DLL as a plugin assembly instead.");
+                return new(build.NupkgPath, null);
+            }
 
-            if (build.NupkgPath is not null)
-                return new(PluginBuildMode.Assembly, build.DllPath,
-                    "Assembly mode selected, but the project also produced a .nupkg — deploying the DLL directly and ignoring the .nupkg.");
-
-            return new(PluginBuildMode.Assembly, build.DllPath, null);
+            return new(build.DllPath,
+                build.NupkgPath is not null
+                    ? "Assembly mode selected, but the project also produced a .nupkg — deploying the DLL directly and ignoring the .nupkg."
+                    : null);
         }
     }
 }
