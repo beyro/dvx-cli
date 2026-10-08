@@ -20,6 +20,8 @@ namespace dvx.Tests
         {
             if (Directory.Exists(_tempDir))
                 Directory.Delete(_tempDir, recursive: true);
+
+            GC.SuppressFinalize(this);
         }
 
         private string ReleaseDir => Path.Combine(_tempDir, "bin", "Release");

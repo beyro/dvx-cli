@@ -12,6 +12,9 @@ namespace dvx.Tests
     {
         private const string AssemblyName = "MyPlugin";
 
+        private static readonly string[] NewTypeNames = new[] { "NS.New" };
+        private static readonly string[] ATypeNames   = new[] { "NS.A" };
+
         private static IOrganizationService SvcWithExistingAssembly(Guid assemblyId, Guid orphanTypeId)
         {
             var svc = Substitute.For<IOrganizationService>();
@@ -51,7 +54,7 @@ namespace dvx.Tests
             {
                 PluginDeployRunner.DeployAssembly(
                     new AssemblyDeployer(svc), new PluginTypeRegistrar(svc),
-                    Artifact(dll), new[] { "NS.New" }, dryRun: false, verbose: false);
+                    Artifact(dll), NewTypeNames, dryRun: false, verbose: false);
 
                 // Dataverse rejects the pluginassembly update while a stale plugintype remains, so
                 // the orphan must be deleted first.
@@ -79,7 +82,7 @@ namespace dvx.Tests
             {
                 PluginDeployRunner.DeployAssembly(
                     new AssemblyDeployer(svc), new PluginTypeRegistrar(svc),
-                    Artifact(dll), new[] { "NS.A" }, dryRun: false, verbose: false);
+                    Artifact(dll), ATypeNames, dryRun: false, verbose: false);
 
                 svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
             }
@@ -101,7 +104,7 @@ namespace dvx.Tests
             {
                 PluginDeployRunner.DeployAssembly(
                     new AssemblyDeployer(svc), new PluginTypeRegistrar(svc),
-                    Artifact(dll), new[] { "NS.New" }, dryRun: true, verbose: false);
+                    Artifact(dll), NewTypeNames, dryRun: true, verbose: false);
 
                 svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
                 svc.DidNotReceive().Update(Arg.Any<Entity>());

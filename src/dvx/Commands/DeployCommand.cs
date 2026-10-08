@@ -59,7 +59,7 @@ namespace dvx.Commands
                     if (prefixWarning is not null) Out.Warn(prefixWarning);
 
                     PluginDeployRunner.BuildAndDeploy(svc, mode, solution, envConfig.Url,
-                        resolvedProject, prefix, isVerbose, isDryRun);
+                        resolvedProject, prefix, new PluginDeployOptions(isVerbose, isDryRun));
                 }
                 catch (Exception ex)
                 {

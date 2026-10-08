@@ -106,7 +106,7 @@ namespace dvx.Services
 
         // ── Helpers ────────────────────────────────────────────────────────────
 
-        private record ExistingType(Guid Id, string TypeName);
+        private sealed record ExistingType(Guid Id, string TypeName);
 
         private List<ExistingType> ExistingTypes(Guid assemblyId)
         {

@@ -174,7 +174,7 @@ namespace dvx.Tests
             new PluginDiscovery(NullLogger<PluginDiscovery>.Instance).Discover(TestAssemblyPath);
 
         private static IReadOnlyList<string> DiscoverTypeNames() =>
-            new PluginDiscovery(NullLogger<PluginDiscovery>.Instance).DiscoverPluginTypeNames(TestAssemblyPath);
+            PluginDiscovery.DiscoverPluginTypeNames(TestAssemblyPath);
 
         // ── Plugin type names (for plugintype registration) ─────────────────────
 

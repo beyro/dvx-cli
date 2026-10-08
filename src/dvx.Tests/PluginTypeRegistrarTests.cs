@@ -9,6 +9,12 @@ namespace dvx.Tests
 {
     public class PluginTypeRegistrarTests
     {
+        private static readonly string[] AbTypeNames   = new[] { "NS.A", "NS.B" };
+        private static readonly string[] DupATypeNames  = new[] { "NS.A", "NS.A" };
+        private static readonly string[] ATypeNames     = new[] { "NS.A" };
+        private static readonly string[] NewTypeNames   = new[] { "NS.New" };
+        private static readonly string[] KeepTypeNames  = new[] { "NS.Keep" };
+
         // ── Helpers ────────────────────────────────────────────────────────────
 
         // A service whose every query returns empty unless a test configures a specific entity.
@@ -55,7 +61,7 @@ namespace dvx.Tests
             var svc        = Svc();
             var assemblyId = Guid.NewGuid();
 
-            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, new[] { "NS.A", "NS.B" });
+            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, AbTypeNames);
 
             svc.Received(1).Create(Arg.Is<Entity>(e =>
                 e.LogicalName == "plugintype" &&
@@ -74,7 +80,7 @@ namespace dvx.Tests
             var assemblyId = Guid.NewGuid();
             HasTypes(svc, Type("NS.A", Guid.NewGuid()));
 
-            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, new[] { "NS.A", "NS.B" });
+            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, AbTypeNames);
 
             svc.Received(1).Create(Arg.Is<Entity>(e => (string)e["typename"] == "NS.B"));
             svc.DidNotReceive().Create(Arg.Is<Entity>(e => (string)e["typename"] == "NS.A"));
@@ -85,7 +91,7 @@ namespace dvx.Tests
         {
             var svc = Svc();
 
-            new PluginTypeRegistrar(svc).EnsureRegistered(Guid.NewGuid(), new[] { "NS.A", "NS.A" });
+            new PluginTypeRegistrar(svc).EnsureRegistered(Guid.NewGuid(), DupATypeNames);
 
             svc.Received(1).Create(Arg.Any<Entity>());
         }
@@ -106,7 +112,7 @@ namespace dvx.Tests
             var svc        = Svc();
             var assemblyId = Guid.NewGuid();
 
-            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, new[] { "NS.A" });
+            new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, ATypeNames);
 
             svc.Received(1).RetrieveMultiple(Arg.Is<QueryExpression>(q =>
                 q.EntityName == "plugintype" &&
@@ -123,7 +129,7 @@ namespace dvx.Tests
             var orphanId = Guid.NewGuid();
             HasTypes(svc, Type("NS.Old", orphanId));
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.New" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), NewTypeNames);
 
             svc.Received(1).Delete("plugintype", orphanId);
         }
@@ -134,7 +140,7 @@ namespace dvx.Tests
             var svc = Svc();
             HasTypes(svc, Type("NS.Keep", Guid.NewGuid()));
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.Keep" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), KeepTypeNames);
 
             svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
         }
@@ -148,7 +154,7 @@ namespace dvx.Tests
             HasTypes(svc, Type("NS.Old", orphanId));
             HasSteps(svc, stepId);
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.New" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), NewTypeNames);
 
             Received.InOrder(() =>
             {
@@ -165,7 +171,7 @@ namespace dvx.Tests
             HasTypes(svc, Type("NS.Api", typeId));
             HasCustomApi(svc, typeId);
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.New" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), NewTypeNames);
 
             svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
         }
@@ -178,7 +184,7 @@ namespace dvx.Tests
             HasTypes(svc, Type("NS.Action", typeId));
             HasCustomAction(svc, typeId);
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.New" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), NewTypeNames);
 
             svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
         }
@@ -200,7 +206,7 @@ namespace dvx.Tests
             var svc = Svc();
             HasTypes(svc, Type("NS.Old", Guid.NewGuid()));
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), new[] { "NS.New" }, dryRun: true);
+            new PluginTypeRegistrar(svc).DeleteOrphans(Guid.NewGuid(), NewTypeNames, dryRun: true);
 
             svc.DidNotReceive().Delete(Arg.Any<string>(), Arg.Any<Guid>());
         }
@@ -212,7 +218,7 @@ namespace dvx.Tests
             var assemblyId = Guid.NewGuid();
             HasTypes(svc, Type("NS.Old", Guid.NewGuid()));
 
-            new PluginTypeRegistrar(svc).DeleteOrphans(assemblyId, new[] { "NS.New" });
+            new PluginTypeRegistrar(svc).DeleteOrphans(assemblyId, NewTypeNames);
 
             svc.Received(1).RetrieveMultiple(Arg.Is<QueryExpression>(q =>
                 q.EntityName == "plugintype" &&

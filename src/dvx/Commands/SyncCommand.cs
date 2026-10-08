@@ -63,7 +63,8 @@ namespace dvx.Commands
 
                     // ── Build + deploy ──────────────────────────────────────
                     var (assemblyId, dllPath) = PluginDeployRunner.BuildAndDeploy(
-                        svc, mode, solution, envConfig.Url, resolvedProject, prefix, isVerbose, isDryRun);
+                        svc, mode, solution, envConfig.Url, resolvedProject, prefix,
+                        new PluginDeployOptions(isVerbose, isDryRun));
 
                     // ── Register ────────────────────────────────────────────
                     // A brand-new assembly under a dry run has no id (nothing was created), so there

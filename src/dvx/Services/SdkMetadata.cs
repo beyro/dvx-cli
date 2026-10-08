@@ -31,6 +31,7 @@ namespace dvx.Services
         private List<Entity>? _customApis;
         private List<Entity>? _customActions;
         private Guid? _systemUserId;
+        private const string PluginTypeIdAttribute = "plugintypeid";
 
         public Guid SystemUserId()
         {
@@ -80,7 +81,7 @@ namespace dvx.Services
         private IReadOnlyList<Entity> CustomApis =>
             _customApis ??= svc.RetrieveMultiple(new QueryExpression("customapi")
             {
-                ColumnSet = new ColumnSet("customapiid", "uniquename", "plugintypeid", "sdkmessageid")
+                ColumnSet = new ColumnSet("customapiid", "uniquename", PluginTypeIdAttribute, "sdkmessageid")
             }).Entities.ToList();
 
         /// <summary>
@@ -93,7 +94,7 @@ namespace dvx.Services
         private IReadOnlyList<Entity> CustomActions =>
             _customActions ??= svc.RetrieveMultiple(new QueryExpression("workflow")
             {
-                ColumnSet = new ColumnSet("workflowid", "uniquename", "plugintypeid"),
+                ColumnSet = new ColumnSet("workflowid", "uniquename", PluginTypeIdAttribute),
                 Criteria  = new FilterExpression
                 {
                     Conditions =
@@ -214,7 +215,7 @@ namespace dvx.Services
             var set = new HashSet<Guid>();
             foreach (var e in CustomApis)
             {
-                var typeRef = e.GetAttributeValue<EntityReference>("plugintypeid");
+                var typeRef = e.GetAttributeValue<EntityReference>(PluginTypeIdAttribute);
                 if (typeRef is not null) set.Add(typeRef.Id);
             }
             return set;
@@ -262,7 +263,7 @@ namespace dvx.Services
             var set = new HashSet<Guid>();
             foreach (var e in CustomActions)
             {
-                var typeRef = e.GetAttributeValue<EntityReference>("plugintypeid");
+                var typeRef = e.GetAttributeValue<EntityReference>(PluginTypeIdAttribute);
                 if (typeRef is not null) set.Add(typeRef.Id);
             }
             return set;
@@ -293,7 +294,7 @@ namespace dvx.Services
         {
             var query = new QueryExpression("plugintype")
             {
-                ColumnSet = new ColumnSet("plugintypeid", "typename"),
+                ColumnSet = new ColumnSet(PluginTypeIdAttribute, "typename"),
                 Criteria  = new FilterExpression()
             };
             query.Criteria.AddCondition("pluginassemblyid", ConditionOperator.Equal, assemblyId);

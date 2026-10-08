@@ -2,11 +2,15 @@ using System.Reflection;
 using dvx.Models;
 using dvx.Output;
 using dvx.Services;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Xrm.Sdk;
 
 namespace dvx.Commands.Shared
 {
+    /// <summary>
+    /// Execution flags for a plugin build-and-deploy run.
+    /// </summary>
+    public readonly record struct PluginDeployOptions(bool Verbose, bool DryRun);
+
     /// <summary>
     /// Shared build-and-deploy step for <c>plugin deploy</c> and <c>plugin sync</c>: build the
     /// project, resolve the artifact for the mode, pick the deployer, deploy it, and add the
@@ -24,9 +28,10 @@ namespace dvx.Commands.Shared
             string url,
             string project,
             string prefix,
-            bool verbose,
-            bool dryRun)
+            PluginDeployOptions options)
         {
+            var (verbose, dryRun) = options;
+
             Out.Step("Building", project);
             var build = new ProjectBuilder().BuildAllowingMissingPackage(project);
             var plan  = PluginDeploymentPlan.Resolve(mode, build);
@@ -51,8 +56,7 @@ namespace dvx.Commands.Shared
             }
             else
             {
-                var typeNames = new PluginDiscovery(NullLogger<PluginDiscovery>.Instance)
-                    .DiscoverPluginTypeNames(build.DllPath);
+                var typeNames = PluginDiscovery.DiscoverPluginTypeNames(build.DllPath);
                 assemblyId = DeployAssembly(
                     new AssemblyDeployer(svc), new PluginTypeRegistrar(svc), artifact, typeNames, dryRun, verbose);
             }

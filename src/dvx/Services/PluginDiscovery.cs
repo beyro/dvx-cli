@@ -25,7 +25,7 @@ namespace dvx.Services
         /// <see cref="Discover"/>, this includes types without <c>[PluginStep]</c> and Custom API
         /// types — mirroring what the Plugin Registration Tool registers in <c>plugintype</c>.
         /// </summary>
-        public IReadOnlyList<string> DiscoverPluginTypeNames(string dllPath)
+        public static IReadOnlyList<string> DiscoverPluginTypeNames(string dllPath)
         {
             var names = new List<string>();
             ForEachPluginType(dllPath, type =>
