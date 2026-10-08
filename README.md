@@ -368,7 +368,12 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 | Mode | Artifact | Target record | Semantics |
 |---|---|---|---|
 | `package` (default) | `.nupkg` | `pluginpackage` | Updates an existing package's `content`. The initial upload must be done once manually. Backward compatible. |
-| `assembly` | `.dll` | `pluginassembly` | Creates the assembly record when no assembly with the same `name` exists, otherwise updates its `content`. `version` comes from the built DLL, `isolationmode` is fixed at Sandbox. |
+| `assembly` | `.dll` | `pluginassembly` | Creates the assembly record when no assembly with the same `name` exists, otherwise updates its `content`; then registers each plugin class as a `plugintype`. `version` comes from the built DLL, `isolationmode` is fixed at Sandbox. |
+
+**Assembly mode registers the plugin types too.** A bare `pluginassembly` upload does **not** make
+Dataverse create the `plugintype` rows (unlike a `pluginpackage`, which it extracts itself), so in
+assembly mode dvx creates a `plugintype` for every plugin class in the built `.dll` — the same job
+the Plugin Registration Tool performs. This is what lets `sync` then register the steps.
 
 Both modes still run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
 
@@ -406,7 +411,7 @@ dvx plugin sync --project <path> [options]
 **What it does:**
 
 1. Runs `dotnet build` on the `.csproj` to produce a `.nupkg` and `.dll`
-2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID. In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll` and uses its own ID
+2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID. In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll`, uses its own ID, and registers any missing `plugintype` records for the assembly's plugin classes
 3. Reflects the `.dll` for `[PluginStep]` attributes
 4. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
 5. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
@@ -1002,7 +1007,7 @@ dvx reads and writes the following Dataverse tables:
 |---|---|
 | `pluginpackage` | Stores the plugin package (nupkg) in its `content` column. Queried by `uniquename`, then updated with the new `.nupkg` content on deploy. |
 | `pluginassembly` | The plugin assembly. In **package** mode this is a child record Dataverse creates when it processes a plugin package (queried after deploy to get the ID for step registration). In **assembly** mode dvx creates (or updates) it directly from the built `.dll`. Also queried by `--assembly-name` to download content bytes. |
-| `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. |
+| `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. For packages Dataverse creates these from the `pluginpackage`; in **assembly** mode dvx creates the missing ones itself, mirroring the Plugin Registration Tool. |
 | `customapi` | Queried by `adopt` to identify Custom API registrations (by `plugintypeid` / `sdkmessageid`) so their steps are skipped rather than scaffolded as `[PluginStep]`. |
 | `sdkmessage` | Lookup table for message names (`Create`, `Update`, `Delete`, …). Loaded once and cached per run. |
 | `sdkmessagefilter` | Associates messages with entity types and indicates whether custom steps are allowed. |

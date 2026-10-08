@@ -39,6 +39,12 @@
 > only in assembly mode (the package path no longer opens the DLL); the solution-add guard is the
 > tested `PluginDeploymentPlan.ShouldAddAssemblyToSolution`; and the package-only `Deploy(string,string)`
 > overload was removed (the string callers were test-only).
+>
+> **Live-org finding (fixed):** a bare `pluginassembly` upload does **not** create the child
+> `plugintype` rows — unlike a `pluginpackage`, which Dataverse extracts itself — so steps could not be
+> registered. Assembly mode now reflects the built DLL and creates the missing `plugintype` records
+> (`PluginTypeRegistrar`), mirroring the Plugin Registration Tool / spkl. This makes C9 (create the
+> assembly) usable end-to-end, so the create path is retained.
 
 ## Architecture
 
@@ -66,9 +72,11 @@ StepRegistrar.Sync(assemblyId, …)   ← unchanged
 - `src/dvx/Services/AssemblyDeployer.cs`
 - `src/dvx/Commands/Shared/PluginDeploymentPlan.cs` — mode/artifact selection + solution-membership predicate
 - `src/dvx/Commands/Shared/PluginDeployRunner.cs` — shared build-and-deploy step for deploy/sync
+- `src/dvx/Services/PluginTypeRegistrar.cs` — registers `plugintype` rows for a deployed assembly
 - `src/dvx.Tests/AssemblyDeployerTests.cs`
 - `src/dvx.Tests/ProjectBuilderTests.cs`
 - `src/dvx.Tests/PluginDeploymentPlanTests.cs`
+- `src/dvx.Tests/PluginTypeRegistrarTests.cs`
 
 **Modify**
 - `src/dvx/Services/PackageDeployer.cs` — implement `IPluginDeployer`, derive from base

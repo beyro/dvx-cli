@@ -2,6 +2,7 @@ using System.Reflection;
 using dvx.Models;
 using dvx.Output;
 using dvx.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Xrm.Sdk;
 
 namespace dvx.Commands.Shared
@@ -46,6 +47,16 @@ namespace dvx.Commands.Shared
                 ? new PackageDeployer(svc)
                 : new AssemblyDeployer(svc);
             var assemblyId = deployer.Deploy(artifact, verbose, dryRun);
+
+            // A bare pluginassembly upload does not create the plugintype rows (unlike a
+            // pluginpackage, which Dataverse extracts itself), so register them here — the same
+            // job the Plugin Registration Tool does — before steps are reconciled.
+            if (mode == PluginBuildMode.Assembly && !dryRun)
+            {
+                var typeNames = new PluginDiscovery(NullLogger<PluginDiscovery>.Instance)
+                    .DiscoverPluginTypeNames(build.DllPath);
+                new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, typeNames, verbose);
+            }
 
             if (PluginDeploymentPlan.ShouldAddAssemblyToSolution(mode, solution, dryRun, assemblyId))
                 new SolutionService(svc).AddAssemblyToSolution(assemblyId, solution!, verbose);
