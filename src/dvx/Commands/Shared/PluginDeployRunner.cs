@@ -25,8 +25,7 @@ namespace dvx.Commands.Shared
             string project,
             string prefix,
             bool verbose,
-            bool dryRun,
-            bool deleteOrphaned)
+            bool dryRun)
         {
             Out.Step("Building", project);
             var build = new ProjectBuilder().BuildAllowingMissingPackage(project);
@@ -44,26 +43,18 @@ namespace dvx.Commands.Shared
             Out.Success("Built", Path.GetFileName(plan.ArtifactPath));
 
             Out.Step("Deploying", $"to {url}");
-            IPluginDeployer deployer = mode == PluginBuildMode.Package
-                ? new PackageDeployer(svc)
-                : new AssemblyDeployer(svc);
-            var assemblyId = deployer.Deploy(artifact, verbose, dryRun);
 
-            // A bare pluginassembly upload does not create the plugintype rows (unlike a
-            // pluginpackage, which Dataverse extracts itself), so register them here — the same
-            // job the Plugin Registration Tool does — before steps are reconciled. On request,
-            // also remove types whose class is no longer in the build.
-            if (mode == PluginBuildMode.Assembly)
+            Guid assemblyId;
+            if (mode == PluginBuildMode.Package)
+            {
+                assemblyId = new PackageDeployer(svc).Deploy(artifact, verbose, dryRun);
+            }
+            else
             {
                 var typeNames = new PluginDiscovery(NullLogger<PluginDiscovery>.Instance)
                     .DiscoverPluginTypeNames(build.DllPath);
-                var registrar = new PluginTypeRegistrar(svc);
-
-                if (!dryRun)
-                    registrar.EnsureRegistered(assemblyId, typeNames, verbose);
-
-                if (deleteOrphaned)
-                    registrar.DeleteOrphans(assemblyId, typeNames, dryRun, verbose);
+                assemblyId = DeployAssembly(
+                    new AssemblyDeployer(svc), new PluginTypeRegistrar(svc), artifact, typeNames, dryRun, verbose);
             }
 
             if (PluginDeploymentPlan.ShouldAddAssemblyToSolution(mode, solution, dryRun, assemblyId))
@@ -73,6 +64,32 @@ namespace dvx.Commands.Shared
                 $"Assembly ID: {assemblyId}");
 
             return (assemblyId, build.DllPath);
+        }
+
+        /// <summary>
+        /// Deploys a bare assembly: reconciles its <c>plugintype</c> rows around the content update.
+        /// A type whose class is no longer in the build must be removed <b>before</b> the update —
+        /// Dataverse validates every registered type against the incoming assembly and rejects the
+        /// update otherwise — and any new class is registered afterwards. Mirrors spkl / the PRT.
+        /// </summary>
+        internal static Guid DeployAssembly(
+            AssemblyDeployer deployer,
+            PluginTypeRegistrar registrar,
+            PluginArtifact artifact,
+            IReadOnlyList<string> typeNames,
+            bool dryRun,
+            bool verbose)
+        {
+            var existingId = deployer.FindExistingId(artifact.AssemblyName);
+            if (existingId is not null)
+                registrar.DeleteOrphans(existingId.Value, typeNames, dryRun, verbose);
+
+            var assemblyId = deployer.Deploy(artifact, verbose, dryRun);
+
+            if (!dryRun)
+                registrar.EnsureRegistered(assemblyId, typeNames, verbose);
+
+            return assemblyId;
         }
     }
 }

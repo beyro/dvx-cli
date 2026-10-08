@@ -82,9 +82,9 @@ namespace dvx.Commands.Shared
 
         public static Option<bool> DeleteOrphanedSteps() => new Option<bool>(
             "--delete-orphaned",
-            "Delete plugin registrations that exist in Dataverse but are no longer present in code: " +
-            "steps, and (in assembly mode) plugin types. Steps and types backing Custom APIs and " +
-            "Custom Actions are never removed. Destructive — run with --dry-run first.");
+            "Delete plugin steps registered in Dataverse but no longer present in code. " +
+            "Steps backing Custom APIs and Custom Actions are never removed. " +
+            "Destructive — run with --dry-run first.");
 
         public static Option<bool> DryRun() => new Option<bool>(
             "--dry-run",

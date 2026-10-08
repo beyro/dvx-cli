@@ -18,18 +18,25 @@ namespace dvx.Services
         // ── Skeleton hooks ─────────────────────────────────────────────────────
 
         protected override Guid? ResolveExistingId(PluginArtifact artifact, bool verbose)
+            => FindExistingId(artifact.AssemblyName);
+
+        /// <summary>
+        /// Resolves the <c>pluginassembly</c> id by <c>name</c>, or null when none exists.
+        /// Throws if more than one record shares the name.
+        /// </summary>
+        public Guid? FindExistingId(string assemblyName)
         {
             var query = new QueryExpression("pluginassembly")
             {
                 ColumnSet = new ColumnSet("pluginassemblyid"),
                 Criteria  = new FilterExpression(),
             };
-            query.Criteria.AddCondition("name", ConditionOperator.Equal, artifact.AssemblyName);
+            query.Criteria.AddCondition("name", ConditionOperator.Equal, assemblyName);
             var result = Svc.RetrieveMultiple(query);
 
             if (result.Entities.Count > 1)
                 throw new InvalidOperationException(
-                    $"Multiple pluginassembly records named '{artifact.AssemblyName}' found in Dataverse. " +
+                    $"Multiple pluginassembly records named '{assemblyName}' found in Dataverse. " +
                     "Remove the duplicates before deploying.");
 
             return result.Entities.Count == 1 ? result.Entities[0].Id : null;

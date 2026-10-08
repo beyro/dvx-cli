@@ -373,9 +373,10 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 **Assembly mode registers the plugin types too.** A bare `pluginassembly` upload does **not** make
 Dataverse create the `plugintype` rows (unlike a `pluginpackage`, which it extracts itself), so in
 assembly mode dvx creates a `plugintype` for every plugin class in the built `.dll` — the same job
-the Plugin Registration Tool performs. This is what lets `sync` then register the steps. With
-`--delete-orphaned`, `deploy`/`sync` also remove assembly-mode `plugintype` rows whose class is no
-longer in the build (types backing a Custom API/Action are kept).
+the Plugin Registration Tool performs. In assembly mode dvx also reconciles these rows on every
+deploy — a type whose class is no longer in the build is removed (with its steps) **before** the
+content update, because Dataverse rejects the update while a stale type remains (types backing a
+Custom API/Action are kept).
 
 Both modes still run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
 
@@ -405,7 +406,7 @@ dvx plugin sync --project <path> [options]
 | `--client-secret` | | env var / config | Service principal client secret |
 | `--solution-unique-name` | | from config | Add all registered steps to this Dataverse solution |
 | `--plugin-build-mode` | | from config | Deploy target: `package` (default) or `assembly`. Falls back to `pluginBuildMode` in config. See [Plugin deployment modes](#plugin-deployment-modes) |
-| `--delete-orphaned` | | | Delete plugin registrations no longer present in code: steps, and (assembly mode) plugin types. Steps and types backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
+| `--delete-orphaned` | | | Delete steps in Dataverse no longer present in code. Steps backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
 | `--dry-run` | | | Print what would change without writing to Dataverse |
 | `--config` | | auto-discovered | Path to config file |
 | `--verbose` | | | Log upload details + inner exception details on error |
@@ -415,7 +416,7 @@ dvx plugin sync --project <path> [options]
 1. Runs `dotnet build` on the `.csproj` to produce a `.nupkg` and `.dll`
 2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID. In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll`, uses its own ID, and registers any missing `plugintype` records for the assembly's plugin classes
 3. Reflects the `.dll` for `[PluginStep]` attributes
-4. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps; with `--delete-orphaned` it removes orphan steps and (assembly mode) orphan `plugintype` records
+4. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
 5. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
 
 > **Note:** in **package** mode, `sync` and `deploy` only support **updating** an existing plugin package.
@@ -465,7 +466,6 @@ dvx plugin deploy --project <path> [options]
 | `--client-secret` | | env var / config | Service principal client secret |
 | `--solution-unique-name` | | from config | Add the deployed assembly to this Dataverse solution (assembly mode) |
 | `--plugin-build-mode` | | from config | Deploy target: `package` (default) or `assembly`. Falls back to `pluginBuildMode` in config. See [Plugin deployment modes](#plugin-deployment-modes) |
-| `--delete-orphaned` | | | Delete `plugintype` rows in Dataverse no longer present in code (assembly mode). Types backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
 | `--dry-run` | | | Print what would happen without writing to Dataverse |
 | `--config` | | auto-discovered | Path to config file |
 | `--verbose` | | | Log upload details + inner exception details on error |
