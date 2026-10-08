@@ -67,7 +67,7 @@ namespace dvx.Services
                 .ThenBy(d => d.ExecutionOrder)
                 .ToList();
 
-            var headers = new[] { "Stage", "Order", "Mode", "Plugin Type", "Description" };
+            var headers = new[] { "Stage", "Order", "Mode", "Plugin Type", "Description", "Runs as" };
             var rows = PrepareTableRows(orderedSteps);
             
             md.Table(headers, rows);
@@ -84,7 +84,7 @@ namespace dvx.Services
                 if ((lastStage.HasValue && lastStage.Value != step.Stage) ||
                     (lastMode.HasValue && lastMode != step.Mode))
                 {
-                    rows.Add(["", "", "", "", ""]); // Add blank row between stages/steps
+                    rows.Add(["", "", "", "", "", ""]); // Add blank row between stages/steps
                 }
 
                 var order = step.IsExecutionOrderExplicit ? step.ExecutionOrder.ToString() : $"{step.ExecutionOrder}*";
@@ -95,7 +95,8 @@ namespace dvx.Services
                     order,
                     mode,
                     step.TypeFullName,
-                    step.Description ?? "-"
+                    step.Description ?? "-",
+                    step.RunAsUserString
                 ]);
 
                 lastStage = step.Stage;
@@ -108,7 +109,7 @@ namespace dvx.Services
         public string GenerateCsv(IEnumerable<PluginStepDefinition> definitions)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Type,Entity,Message,Stage,Mode,ExecutionOrder,IsExplicit,Description");
+            sb.AppendLine("Type,Entity,Message,Stage,Mode,ExecutionOrder,IsExplicit,Description,RunsAs");
 
             foreach (var def in definitions.OrderBy(d => d.Entity).ThenBy(d => d.Message).ThenBy(d => d.Mode)
                          .ThenBy(d => d.ExecutionOrder))
@@ -122,7 +123,8 @@ namespace dvx.Services
                     def.Mode == 1 ? "Async" : "Sync",
                     def.ExecutionOrder.ToString(),
                     def.IsExecutionOrderExplicit.ToString(),
-                    def.Description ?? ""
+                    def.Description ?? "",
+                    def.RunAsUserString
                 };
                 sb.AppendLine(string.Join(",", row.Select(EscapeCsv)));
             }
