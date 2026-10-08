@@ -367,18 +367,10 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 
 | Mode | Artifact | Target record | Semantics |
 |---|---|---|---|
-| `package` (default) | `.nupkg` | `pluginpackage` | Updates an existing package's `content`. The initial upload must be done once manually. Backward compatible. |
+| `package` (default) | `.nupkg` | `pluginpackage` | Updates an existing package's `content`. The initial upload must be done once manually. |
 | `assembly` | `.dll` | `pluginassembly` | Creates the assembly record when no assembly with the same `name` exists, otherwise updates its `content`; then registers each plugin class as a `plugintype`. `version` comes from the built DLL, `isolationmode` is fixed at Sandbox. |
 
-**Assembly mode registers the plugin types too.** A bare `pluginassembly` upload does **not** make
-Dataverse create the `plugintype` rows (unlike a `pluginpackage`, which it extracts itself), so in
-assembly mode dvx creates a `plugintype` for every plugin class in the built `.dll` — the same job
-the Plugin Registration Tool performs. In assembly mode dvx also reconciles these rows on every
-deploy — a type whose class is no longer in the build is removed (with its steps) **before** the
-content update, because Dataverse rejects the update while a stale type remains (types backing a
-Custom API/Action are kept).
-
-Both modes still run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
+Both modes run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
 
 **Package mode is strict:** if `package` mode is selected but the build emits no `.nupkg`, the
 command **fails** rather than falling back to the DLL — pass `--plugin-build-mode assembly` to
@@ -414,7 +406,8 @@ dvx plugin sync --project <path> [options]
 **What it does:**
 
 1. Runs `dotnet build` on the `.csproj` to produce a `.nupkg` and `.dll`
-2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID. In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll`, uses its own ID, and registers any missing `plugintype` records for the assembly's plugin classes
+2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID.
+   - In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll`, uses its own ID, and registers any missing `plugintype` records for the assembly's plugin classes
 3. Reflects the `.dll` for `[PluginStep]` attributes
 4. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
 5. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
