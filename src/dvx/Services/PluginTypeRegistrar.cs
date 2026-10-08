@@ -22,6 +22,7 @@ namespace dvx.Services
 
             var existing = ExistingTypes(assemblyId).Select(t => t.TypeName).ToHashSet(StringComparer.Ordinal);
 
+            var created = 0;
             foreach (var typeName in desiredTypeNames.Distinct(StringComparer.Ordinal))
             {
                 if (existing.Contains(typeName))
@@ -37,7 +38,11 @@ namespace dvx.Services
                     ["friendlyname"]     = typeName,
                     ["pluginassemblyid"] = new EntityReference("pluginassembly", assemblyId),
                 });
+                created++;
             }
+
+            if (created > 0)
+                Out.Success("Registered", $"{created} plugin type(s).");
         }
 
         /// <summary>
