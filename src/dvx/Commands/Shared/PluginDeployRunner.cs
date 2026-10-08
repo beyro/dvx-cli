@@ -25,7 +25,8 @@ namespace dvx.Commands.Shared
             string project,
             string prefix,
             bool verbose,
-            bool dryRun)
+            bool dryRun,
+            bool deleteOrphaned)
         {
             Out.Step("Building", project);
             var build = new ProjectBuilder().BuildAllowingMissingPackage(project);
@@ -50,12 +51,19 @@ namespace dvx.Commands.Shared
 
             // A bare pluginassembly upload does not create the plugintype rows (unlike a
             // pluginpackage, which Dataverse extracts itself), so register them here — the same
-            // job the Plugin Registration Tool does — before steps are reconciled.
-            if (mode == PluginBuildMode.Assembly && !dryRun)
+            // job the Plugin Registration Tool does — before steps are reconciled. On request,
+            // also remove types whose class is no longer in the build.
+            if (mode == PluginBuildMode.Assembly)
             {
                 var typeNames = new PluginDiscovery(NullLogger<PluginDiscovery>.Instance)
                     .DiscoverPluginTypeNames(build.DllPath);
-                new PluginTypeRegistrar(svc).EnsureRegistered(assemblyId, typeNames, verbose);
+                var registrar = new PluginTypeRegistrar(svc);
+
+                if (!dryRun)
+                    registrar.EnsureRegistered(assemblyId, typeNames, verbose);
+
+                if (deleteOrphaned)
+                    registrar.DeleteOrphans(assemblyId, typeNames, dryRun, verbose);
             }
 
             if (PluginDeploymentPlan.ShouldAddAssemblyToSolution(mode, solution, dryRun, assemblyId))

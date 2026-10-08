@@ -93,7 +93,7 @@ namespace dvx.Services
         private IReadOnlyList<Entity> CustomActions =>
             _customActions ??= svc.RetrieveMultiple(new QueryExpression("workflow")
             {
-                ColumnSet = new ColumnSet("workflowid", "uniquename"),
+                ColumnSet = new ColumnSet("workflowid", "uniquename", "plugintypeid"),
                 Criteria  = new FilterExpression
                 {
                     Conditions =
@@ -249,6 +249,21 @@ namespace dvx.Services
                 var uniqueName = e.GetAttributeValue<string>("uniquename");
                 if (uniqueName is not null && messageIdByName.TryGetValue(uniqueName, out var id))
                     set.Add(id);
+            }
+            return set;
+        }
+
+        /// <summary>
+        /// Retrieves the set of GUIDs for the plugin types that back Custom Actions.
+        /// </summary>
+        /// <returns>A hash set containing the plugin type IDs referenced by Custom Action definitions.</returns>
+        public HashSet<Guid> CustomActionPluginTypeIds()
+        {
+            var set = new HashSet<Guid>();
+            foreach (var e in CustomActions)
+            {
+                var typeRef = e.GetAttributeValue<EntityReference>("plugintypeid");
+                if (typeRef is not null) set.Add(typeRef.Id);
             }
             return set;
         }

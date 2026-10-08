@@ -23,10 +23,11 @@ namespace dvx.Commands
             var pluginBuildMode = CommandOptions.PluginBuildMode();
             var interactiveAuth = CommandOptions.InteractiveAuth();
             var dryRun          = CommandOptions.DryRun();
+            var deleteOrphaned  = CommandOptions.DeleteOrphanedSteps();
             var verbose         = CommandOptions.Verbose();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                solutionUniqueName, pluginBuildMode, interactiveAuth, dryRun, verbose);
+                solutionUniqueName, pluginBuildMode, interactiveAuth, dryRun, deleteOrphaned, verbose);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -41,6 +42,7 @@ namespace dvx.Commands
                 var cliMode      = ctx.ParseResult.GetValueForOption(pluginBuildMode);
                 var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
                 var isDryRun     = ctx.ParseResult.GetValueForOption(dryRun);
+                var delOrphaned  = ctx.ParseResult.GetValueForOption(deleteOrphaned);
                 var isVerbose    = ctx.ParseResult.GetValueForOption(verbose);
 
                 try
@@ -59,7 +61,7 @@ namespace dvx.Commands
                     if (prefixWarning is not null) Out.Warn(prefixWarning);
 
                     PluginDeployRunner.BuildAndDeploy(svc, mode, solution, envConfig.Url,
-                        resolvedProject, prefix, isVerbose, isDryRun);
+                        resolvedProject, prefix, isVerbose, isDryRun, delOrphaned);
                 }
                 catch (Exception ex)
                 {
