@@ -161,6 +161,14 @@ namespace dvx.Config
              : !string.IsNullOrWhiteSpace(config?.SolutionUniqueName) ? config.SolutionUniqueName
              : null;
 
+        /// <summary>
+        /// Resolves the plugin build mode from <c>--plugin-build-mode</c> &gt; <c>pluginBuildMode</c>
+        /// in config, defaulting to <see cref="PluginBuildMode.Package"/> when neither is set
+        /// (preserving the existing package-based workflow).
+        /// </summary>
+        public static PluginBuildMode ResolvePluginBuildMode(AppConfig? config, PluginBuildMode? cliOverride)
+            => cliOverride ?? config?.PluginBuildMode ?? PluginBuildMode.Package;
+
         // ── Web resource resolvers ─────────────────────────────────────────────
 
         public static string? ResolveWebResourceFolder(AppConfig? config, string? cliOverride)

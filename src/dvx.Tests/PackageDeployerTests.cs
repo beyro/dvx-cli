@@ -11,6 +11,10 @@ namespace dvx.Tests
     {
         private const string UniqueName = "solu_TestPlugin";
 
+        // PackageDeployer only uses artifact.UniqueName (the package lookup key) and artifact.Path.
+        private static PluginArtifact Artifact(string nupkgPath)
+            => new(nupkgPath, "TestPlugin", UniqueName, null);
+
         // ── Mock builders ──────────────────────────────────────────────────────
 
         private static IOrganizationService BuildSvc(
@@ -62,7 +66,7 @@ namespace dvx.Tests
 
             // Package lookup fails before any file is read, so the path need not exist.
             var ex = Should.Throw<InvalidOperationException>(() =>
-                new PackageDeployer(svc).Deploy("pkg.nupkg", UniqueName));
+                new PackageDeployer(svc).Deploy(Artifact("pkg.nupkg")));
 
             ex.Message.ShouldContain(UniqueName);
             ex.Message.ShouldContain("initial upload");
@@ -74,7 +78,7 @@ namespace dvx.Tests
             var svc = BuildSvc(existingPackageId: null);
 
             Should.Throw<InvalidOperationException>(() =>
-                new PackageDeployer(svc).Deploy("pkg.nupkg", UniqueName));
+                new PackageDeployer(svc).Deploy(Artifact("pkg.nupkg")));
 
             svc.DidNotReceive().Update(Arg.Any<Entity>());
         }
@@ -89,7 +93,7 @@ namespace dvx.Tests
 
             try
             {
-                var result = new PackageDeployer(svc).Deploy(nupkg, UniqueName);
+                var result = new PackageDeployer(svc).Deploy(Artifact(nupkg));
 
                 result.ShouldBe(assemblyId);
                 svc.Received(1).Update(Arg.Is<Entity>(e =>
@@ -114,7 +118,7 @@ namespace dvx.Tests
 
             try
             {
-                var result = new PackageDeployer(svc).Deploy(nupkg, UniqueName, dryRun: true);
+                var result = new PackageDeployer(svc).Deploy(Artifact(nupkg), dryRun: true);
 
                 result.ShouldBe(assemblyId);
                 svc.DidNotReceive().Update(Arg.Any<Entity>());
@@ -137,7 +141,7 @@ namespace dvx.Tests
             try
             {
                 Should.Throw<InvalidOperationException>(() =>
-                    new PackageDeployer(svc).Deploy(nupkg, UniqueName));
+                    new PackageDeployer(svc).Deploy(Artifact(nupkg)));
             }
             finally
             {
@@ -155,7 +159,7 @@ namespace dvx.Tests
             try
             {
                 var ex = Should.Throw<InvalidOperationException>(() =>
-                    new PackageDeployer(svc).Deploy(nupkg, UniqueName));
+                    new PackageDeployer(svc).Deploy(Artifact(nupkg)));
 
                 ex.Message.ShouldContain(UniqueName);
             }

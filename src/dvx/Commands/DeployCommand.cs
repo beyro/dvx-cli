@@ -11,7 +11,7 @@ namespace dvx.Commands
     {
         public static Command Build()
         {
-            var cmd             = new Command("deploy", "Build and push the plugin package to Dataverse.");
+            var cmd             = new Command("deploy", "Build and deploy the plugin to Dataverse.");
             var env             = CommandOptions.Env();
             var config          = CommandOptions.Config();
             var url             = CommandOptions.Url();
@@ -20,11 +20,13 @@ namespace dvx.Commands
             var project         = CommandOptions.Project();
             var publisherPrefix = CommandOptions.PublisherPrefix();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
+            var pluginBuildMode = CommandOptions.PluginBuildMode();
             var interactiveAuth = CommandOptions.InteractiveAuth();
+            var dryRun          = CommandOptions.DryRun();
             var verbose         = CommandOptions.Verbose();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                solutionUniqueName, interactiveAuth, verbose);
+                solutionUniqueName, pluginBuildMode, interactiveAuth, dryRun, verbose);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -36,7 +38,9 @@ namespace dvx.Commands
                 var projectPath  = ctx.ParseResult.GetValueForOption(project)!;
                 var pubPrefix    = ctx.ParseResult.GetValueForOption(publisherPrefix);
                 var cliSolution  = ctx.ParseResult.GetValueForOption(solutionUniqueName);
+                var cliMode      = ctx.ParseResult.GetValueForOption(pluginBuildMode);
                 var cliInteractive = ctx.ParseResult.GetValueForOption(interactiveAuth);
+                var isDryRun     = ctx.ParseResult.GetValueForOption(dryRun);
                 var isVerbose    = ctx.ParseResult.GetValueForOption(verbose);
 
                 try
@@ -47,23 +51,15 @@ namespace dvx.Commands
                     var configured  = ConfigLoader.ResolveConfiguredPublisherPrefix(appConfig, pubPrefix);
                     var solution    = ConfigLoader.ResolveSolutionUniqueName(appConfig, cliSolution);
                     var resolvedProject = ConfigLoader.ResolveProject(appConfig, projectPath);
+                    var mode        = ConfigLoader.ResolvePluginBuildMode(appConfig, cliMode);
                     using var svc   = DataverseClientFactory.Create(envConfig);
 
                     var (prefix, prefixWarning) = PublisherPrefixResolution.Resolve(
                         configured, solution, new SolutionPublisherResolver(svc).GetCustomizationPrefix);
                     if (prefixWarning is not null) Out.Warn(prefixWarning);
 
-                    Out.Step("Building", resolvedProject);
-                    var build        = new ProjectBuilder().Build(resolvedProject);
-                    var assemblyName = Path.GetFileNameWithoutExtension(build.DllPath);
-                    Out.Success("Built", Path.GetFileName(build.NupkgPath));
-
-                    Out.Step("Deploying", $"to {envConfig.Url}");
-                    var uniqueName = $"{prefix}_{assemblyName}";
-                    var deployer   = new PackageDeployer(svc);
-                    var assemblyId = deployer.Deploy(build.NupkgPath, uniqueName, isVerbose);
-
-                    Out.Success("Deployed.", $"Assembly ID: {assemblyId}");
+                    PluginDeployRunner.BuildAndDeploy(svc, mode, solution, envConfig.Url,
+                        resolvedProject, prefix, new PluginDeployOptions(isVerbose, isDryRun));
                 }
                 catch (Exception ex)
                 {

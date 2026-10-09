@@ -173,6 +173,27 @@ namespace dvx.Tests
         private static List<PluginStepDefinition> Discover() =>
             new PluginDiscovery(NullLogger<PluginDiscovery>.Instance).Discover(TestAssemblyPath);
 
+        private static IReadOnlyList<string> DiscoverTypeNames() =>
+            PluginDiscovery.DiscoverPluginTypeNames(TestAssemblyPath);
+
+        // ── Plugin type names (for plugintype registration) ─────────────────────
+
+        [Fact]
+        public void DiscoverPluginTypeNames_ReturnsEveryConcretePluginType()
+        {
+            var names = DiscoverTypeNames();
+
+            // Includes classes with no [PluginStep] and [CustomApi] classes — the PRT registers all.
+            names.ShouldContain(n => n.EndsWith(nameof(TestPluginSingle)));
+            names.ShouldContain(n => n.EndsWith(nameof(TestPluginNoStep)));
+            names.ShouldContain(n => n.EndsWith(nameof(TestPluginCustomApi)));
+            names.ShouldContain(n => n.EndsWith(nameof(TestPluginCustomApiWithStep)));
+
+            // Abstract classes and non-IPlugin types are excluded.
+            names.ShouldNotContain(n => n.EndsWith(nameof(TestPluginAbstract)));
+            names.ShouldNotContain(n => n.EndsWith(nameof(NotAPlugin)));
+        }
+
         // ── Single step ────────────────────────────────────────────────────────
 
         [Fact]

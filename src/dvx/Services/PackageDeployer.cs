@@ -9,72 +9,46 @@ namespace dvx.Services
     /// <c>.nupkg</c> to the <c>content</c> column of the existing <c>pluginpackage</c> record
     /// (the same mechanism <c>pac plugin push</c> uses internally — no external CLI required).
     /// Only supports <b>updating</b> an existing package — the initial upload must be performed
-    /// once manually (e.g. with the Plugin Registration Tool). After a successful update,
-    /// returns the child <c>pluginassembly</c> ID for step registration.
+    /// once manually (e.g. with the Plugin Registration Tool). After a successful update, returns
+    /// the child <c>pluginassembly</c> ID for step registration.
     /// </summary>
-    public class PackageDeployer
+    public class PackageDeployer : PluginDeployerBase
     {
-        private readonly IOrganizationService _svc;
+        public PackageDeployer(IOrganizationService svc) : base(svc) { }
 
-        public PackageDeployer(IOrganizationService svc) => _svc = svc;
+        // ── Skeleton hooks ─────────────────────────────────────────────────────
 
-        // ── Public API ─────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Looks up the existing <c>pluginpackage</c> record, uploads the new package content
-        /// via an <see cref="IOrganizationService.Update"/> call, then returns the child
-        /// <c>pluginassembly</c> ID. Dataverse re-extracts the assemblies and plugin types
-        /// from the uploaded package automatically.
-        /// </summary>
-        public Guid Deploy(string nupkgPath, string packageUniqueName, bool verbose = false, bool dryRun = false)
-        {
-            var packageId = FindExistingPackage(packageUniqueName)
-                ?? throw new InvalidOperationException(
-                    $"Plugin package '{packageUniqueName}' was not found in Dataverse. " +
+        protected override Guid? ResolveExistingId(PluginArtifact artifact, bool verbose)
+            => FindIdByUniqueName("pluginpackage", artifact.UniqueName)
+               ?? throw new InvalidOperationException(
+                    $"Plugin package '{artifact.UniqueName}' was not found in Dataverse. " +
                     "The initial upload must be done once manually (e.g. with the Plugin " +
                     "Registration Tool). Once the record exists, dvx can push updates to it.");
 
-            if (!dryRun)
-            {
-                UploadContent(nupkgPath, packageId, verbose);
-            }
-
-            return FindAssemblyInPackage(packageId, packageUniqueName);
-        }
-
-        // ── Upload ─────────────────────────────────────────────────────────────
-
-        private void UploadContent(string nupkgPath, Guid packageId, bool verbose)
+        protected override Guid? UploadContent(Guid? existingId, PluginArtifact artifact, bool verbose)
         {
-            var bytes = File.ReadAllBytes(nupkgPath);
+            var bytes = File.ReadAllBytes(artifact.Path);
 
             if (verbose)
-                Out.Dim($"    Uploading {bytes.Length / 1024} KB to pluginpackage {packageId}");
+                Out.Dim($"    Uploading {bytes.Length / 1024} KB to pluginpackage {existingId}");
 
             Out.SubStep("Uploading package content...");
 
             // Only set content — name/uniquename/version are immutable once the package
             // exists; Dataverse re-extracts the assemblies and plugin types from the new
             // content on update.
-            _svc.Update(new Entity("pluginpackage", packageId)
+            Svc.Update(new Entity("pluginpackage", existingId!.Value)
             {
                 ["content"] = Convert.ToBase64String(bytes),
             });
+
+            return existingId;
         }
+
+        protected override Guid ReturnAssemblyId(Guid? id, PluginArtifact artifact)
+            => FindAssemblyInPackage(id!.Value, artifact.UniqueName);
 
         // ── Dataverse queries ──────────────────────────────────────────────────
-
-        private Guid? FindExistingPackage(string uniqueName)
-        {
-            var query = new QueryExpression("pluginpackage")
-            {
-                ColumnSet = new ColumnSet("pluginpackageid"),
-                Criteria  = new FilterExpression(),
-            };
-            query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, uniqueName);
-            var result = _svc.RetrieveMultiple(query);
-            return result.Entities.Count > 0 ? result.Entities[0].Id : null;
-        }
 
         private Guid FindAssemblyInPackage(Guid packageId, string packageUniqueName)
         {
@@ -84,7 +58,7 @@ namespace dvx.Services
                 Criteria  = new FilterExpression(),
             };
             query.Criteria.AddCondition("packageid", ConditionOperator.Equal, packageId);
-            var result = _svc.RetrieveMultiple(query);
+            var result = Svc.RetrieveMultiple(query);
 
             if (result.Entities.Count == 0)
                 throw new InvalidOperationException(

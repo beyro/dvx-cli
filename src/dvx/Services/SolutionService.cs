@@ -52,6 +52,9 @@ namespace dvx.Services
         public virtual void AddStepToSolution(Guid stepId, string solutionUniqueName, bool verbose = false)
             => AddComponentToSolution(stepId, 92 /* sdkmessageprocessingstep */, solutionUniqueName, verbose);
 
+        public virtual void AddAssemblyToSolution(Guid assemblyId, string solutionUniqueName, bool verbose = false)
+            => AddComponentToSolution(assemblyId, 91 /* pluginassembly */, solutionUniqueName, verbose);
+
         public virtual void AddWebResourceToSolution(Guid webResourceId, string solutionUniqueName, bool verbose = false)
             => AddComponentToSolution(webResourceId, 61 /* webresource */, solutionUniqueName, verbose);
 

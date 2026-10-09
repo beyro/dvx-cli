@@ -20,6 +20,7 @@ namespace dvx.Commands
             var clientSecret       = CommandOptions.ClientSecret();
             var project            = CommandOptions.Project();
             var publisherPrefix    = CommandOptions.PublisherPrefix();
+            var pluginBuildMode    = CommandOptions.PluginBuildMode();
             var dryRun             = CommandOptions.DryRun();
             var verbose            = CommandOptions.Verbose();
             var solutionUniqueName = CommandOptions.SolutionUniqueName();
@@ -27,7 +28,7 @@ namespace dvx.Commands
             var interactiveAuth    = CommandOptions.InteractiveAuth();
 
             cmd.AddOptions(env, config, url, clientId, clientSecret, project, publisherPrefix,
-                dryRun, verbose, solutionUniqueName, deleteOrphaned, interactiveAuth);
+                pluginBuildMode, dryRun, verbose, solutionUniqueName, deleteOrphaned, interactiveAuth);
 
             cmd.SetHandler((InvocationContext ctx) =>
             {
@@ -38,6 +39,7 @@ namespace dvx.Commands
                 var cliSecret   = ctx.ParseResult.GetValueForOption(clientSecret);
                 var projectPath = ctx.ParseResult.GetValueForOption(project)!;
                 var cliPrefix   = ctx.ParseResult.GetValueForOption(publisherPrefix);
+                var cliMode     = ctx.ParseResult.GetValueForOption(pluginBuildMode);
                 var isDryRun    = ctx.ParseResult.GetValueForOption(dryRun);
                 var isVerbose   = ctx.ParseResult.GetValueForOption(verbose);
                 var cliSolution = ctx.ParseResult.GetValueForOption(solutionUniqueName);
@@ -52,30 +54,30 @@ namespace dvx.Commands
                     var configured      = ConfigLoader.ResolveConfiguredPublisherPrefix(appConfig, cliPrefix);
                     var solution        = ConfigLoader.ResolveSolutionUniqueName(appConfig, cliSolution);
                     var resolvedProject = ConfigLoader.ResolveProject(appConfig, projectPath);
+                    var mode            = ConfigLoader.ResolvePluginBuildMode(appConfig, cliMode);
                     using var svc       = DataverseClientFactory.Create(envConfig);
 
                     var (prefix, prefixWarning) = PublisherPrefixResolution.Resolve(
                         configured, solution, new SolutionPublisherResolver(svc).GetCustomizationPrefix);
                     if (prefixWarning is not null) Out.Warn(prefixWarning);
 
-                    // ── Build ───────────────────────────────────────────────
-                    Out.Step("Building", resolvedProject);
-                    var build        = new ProjectBuilder().Build(resolvedProject);
-                    var assemblyName = Path.GetFileNameWithoutExtension(build.DllPath);
-                    Out.Success("Built", Path.GetFileName(build.NupkgPath));
-
-                    // ── Deploy ──────────────────────────────────────────────
-                    Out.Step("Deploying", $"to {envConfig.Url}");
-                    var uniqueName = $"{prefix}_{assemblyName}";
-                    var deployer   = new PackageDeployer(svc);
-                    var assemblyId = deployer.Deploy(build.NupkgPath, uniqueName, isVerbose, isDryRun);
-                    Out.Success(isDryRun ? "Resolved assembly (upload skipped — dry run)." : "Deployed.",
-                        $"Assembly ID: {assemblyId}");
+                    // ── Build + deploy ──────────────────────────────────────
+                    var (assemblyId, dllPath) = PluginDeployRunner.BuildAndDeploy(
+                        svc, mode, solution, envConfig.Url, resolvedProject, prefix,
+                        new PluginDeployOptions(isVerbose, isDryRun));
 
                     // ── Register ────────────────────────────────────────────
+                    // A brand-new assembly under a dry run has no id (nothing was created), so there
+                    // are no plugin types to reconcile — report and stop rather than fault the run.
+                    if (assemblyId == Guid.Empty)
+                    {
+                        Out.Info("Assembly does not exist yet — step registration skipped (dry run).");
+                        return;
+                    }
+
                     Out.Step("Discovering", "plugin steps via reflection...");
                     var discovery   = new PluginDiscovery(loggerFactory.CreateLogger<PluginDiscovery>());
-                    var definitions = discovery.Discover(build.DllPath, isVerbose);
+                    var definitions = discovery.Discover(dllPath, isVerbose);
                     Out.Info($"Found {definitions.Count} step definition(s).");
 
                     if (isDryRun)

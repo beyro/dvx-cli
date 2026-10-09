@@ -1,4 +1,5 @@
 using System.CommandLine;
+using dvx.Models;
 
 namespace dvx.Commands.Shared
 {
@@ -38,6 +39,12 @@ namespace dvx.Commands.Shared
             "--project",
             "Path to the plugin .csproj file. The tool will run 'dotnet build' to produce the .nupkg and .dll. " +
             "If omitted, falls back to the 'project' field in config, then a single .csproj in the current directory.");
+
+        public static Option<PluginBuildMode?> PluginBuildMode() => new Option<PluginBuildMode?>(
+            "--plugin-build-mode",
+            "Deployment target: 'package' uploads the .nupkg to a pluginpackage record (default); " +
+            "'assembly' uploads the .dll directly to a pluginassembly record. " +
+            "Falls back to pluginBuildMode in config.");
 
         public static Option<string?> PublisherPrefix() => new Option<string?>(
             "--publisher-prefix",

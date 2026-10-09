@@ -40,6 +40,13 @@ namespace dvx.Models
         public string? Project { get; set; }
 
         /// <summary>
+        /// Which record <c>dvx plugin deploy</c>/<c>sync</c> uploads the build artifact to:
+        /// <c>package</c> (pluginpackage, default) or <c>assembly</c> (pluginassembly).
+        /// Can be overridden per-command with <c>--plugin-build-mode</c>.
+        /// </summary>
+        public PluginBuildMode? PluginBuildMode { get; set; }
+
+        /// <summary>
         /// Optional defaults for <c>dvx webresource sync</c> (source folder/manifest, name prefix,
         /// publish behaviour).
         /// </summary>

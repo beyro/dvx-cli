@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dvx</ToolCommandName>
     <PackageId>dvx.cli</PackageId>
-    <Version>1.10.0</Version>
+    <Version>1.11.0</Version>
     <Authors>Byron Matus</Authors>
     <Description>CLI for deploying code-first Dataverse / Power Platform artifacts — plugin assemblies and web resources.</Description>
     <LangVersion>default</LangVersion>
@@ -17,8 +17,9 @@
     <RepositoryUrl>https://github.com/beyro/dvx-cli</RepositoryUrl>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>1.10.0:
-- Add column to `plugin report` output files that shows the user the plugin runs as</PackageReleaseNotes>
+    <PackageReleaseNotes>1.11.0:
+- New `--plugin-build-mode assembly` (and `pluginBuildMode` in config) to deploy a bare plugin assembly straight to a `pluginassembly` record — created when absent, updated otherwise — as an alternative to the NuGet package path. Package mode is unchanged and now fails loudly when no `.nupkg` is produced.
+- `plugin deploy` gains `--dry-run`.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -186,6 +186,7 @@ If no file is found, connection details must be supplied entirely via CLI option
   ],
   "publisherPrefix": "yourprefix",
   "solutionUniqueName": "MySolution",
+  "pluginBuildMode": "package",
   "webResources": {
     "folder": "./WebResources",
     "manifest": "./webresources.json",
@@ -204,6 +205,7 @@ If no file is found, connection details must be supplied entirely via CLI option
 | `authType` | | `clientSecret` (default) or `interactive`. `interactive` signs in through the browser for local development and needs only `url` (no `clientId` / `clientSecret`) — see [Interactive login](#interactive-login-local-development) |
 | `publisherPrefix` | when no solution given | Dataverse publisher customization prefix (e.g. `"pub"`). Used to form the `pluginpackage` unique name (`{prefix}_{assemblyName}`) and to prefix folder-derived web-resource names. **Fallback only** — when a solution is provided, its publisher's prefix is used instead (and this value, if also set, is ignored with a warning). Can be supplied via `--publisher-prefix`. |
 | `solutionUniqueName` | | Unique name of the Dataverse solution to add deployed components (plugin steps / web resources) to. **Authoritative for the customization prefix**: when set, the prefix is read from this solution's publisher rather than `publisherPrefix`. Can be overridden per-command with `--solution-unique-name`.                                                                    |
+| `pluginBuildMode` | | Which record `plugin deploy` / `plugin sync` upload the build artifact to: `package` (default — the `.nupkg` on a `pluginpackage`) or `assembly` (the `.dll` on a `pluginassembly`). Can be overridden per-command with `--plugin-build-mode`. See [Plugin deployment modes](#plugin-deployment-modes).                                                                    |
 | `webResources` | | Defaults for `webresource sync`: `folder`, `manifest`, and `publish` (default `true`). See [Web resources](#web-resources).                                                                                                                                                                                                                                                    |
 
 ### Connection value resolution
@@ -358,6 +360,26 @@ var postImage = context.PostEntityImages["PostImage"];  // UsePostImage = true
 > (`--env` / `--url` / `--client-id` / `--client-secret` / `--interactive-auth`), `--config`, `--dry-run`,
 > and `--verbose` are shared across all commands.
 
+### Plugin deployment modes
+
+`plugin deploy` and `plugin sync` can push a plugin to Dataverse in one of two ways, selected with
+`--plugin-build-mode` (or the `pluginBuildMode` config field):
+
+| Mode | Artifact | Target record | Semantics |
+|---|---|---|---|
+| `package` (default) | `.nupkg` | `pluginpackage` | Updates an existing package's `content`. The initial upload must be done once manually. |
+| `assembly` | `.dll` | `pluginassembly` | Creates the assembly record when no assembly with the same `name` exists, otherwise updates its `content`; then registers each plugin class as a `plugintype`. `version` comes from the built DLL, `isolationmode` is fixed at Sandbox. |
+
+Both modes run `dotnet build` (Release). CLI `--plugin-build-mode` wins over `pluginBuildMode` in config.
+
+**Package mode is strict:** if `package` mode is selected but the build emits no `.nupkg`, the
+command **fails** rather than falling back to the DLL — pass `--plugin-build-mode assembly` to
+intentionally deploy a bare assembly. Conversely, `assembly` mode on a project that also produced a
+`.nupkg` prints a warning and deploys the DLL, ignoring the package.
+
+When `--solution-unique-name` (or `solutionUniqueName`) is set, **assembly** mode adds the deployed
+assembly to that solution as a component.
+
 ### plugin sync
 
 > Build, deploy, and register steps in a single operation. **This is the plugin command you'll use most.**
@@ -375,6 +397,7 @@ dvx plugin sync --project <path> [options]
 | `--client-id` | | env var / config | Service principal client ID |
 | `--client-secret` | | env var / config | Service principal client secret |
 | `--solution-unique-name` | | from config | Add all registered steps to this Dataverse solution |
+| `--plugin-build-mode` | | from config | Deploy target: `package` (default) or `assembly`. Falls back to `pluginBuildMode` in config. See [Plugin deployment modes](#plugin-deployment-modes) |
 | `--delete-orphaned` | | | Delete steps in Dataverse no longer present in code. Steps backing Custom APIs and Custom Actions are never removed. Destructive — run with `--dry-run` first |
 | `--dry-run` | | | Print what would change without writing to Dataverse |
 | `--config` | | auto-discovered | Path to config file |
@@ -383,16 +406,17 @@ dvx plugin sync --project <path> [options]
 **What it does:**
 
 1. Runs `dotnet build` on the `.csproj` to produce a `.nupkg` and `.dll`
-2. Looks up the existing `pluginpackage` record by `uniquename` (`{prefix}_{assemblyName}`)
-3. Uploads the new `.nupkg` by updating the `pluginpackage` `content` column via the Dataverse SDK
-4. Queries the child `pluginassembly` record for the assembly ID
-5. Reflects the `.dll` for `[PluginStep]` attributes
-6. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
-7. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
+2. In **package** mode: looks up the existing `pluginpackage` by `uniquename` (`{prefix}_{assemblyName}`), updates its `content`, and reads the child `pluginassembly` ID.
+   - In **assembly** mode: creates (or updates) the `pluginassembly` by `name` from the built `.dll`, uses its own ID, and registers any missing `plugintype` records for the assembly's plugin classes
+3. Reflects the `.dll` for `[PluginStep]` attributes
+4. Syncs `sdkmessageprocessingstep` records — creates new steps, updates changed steps, and warns about orphan steps (removed only when `--delete-orphaned` is passed)
+5. Syncs `sdkmessageprocessingstepimage` records (pre/post images) for each step
 
-> **Note:** `sync` and `deploy` only support **updating** an existing plugin package.
+> **Note:** in **package** mode, `sync` and `deploy` only support **updating** an existing plugin package.
 > For the very first upload, register the package once with the Plugin Registration Tool. 
 > After that, dvx handles all subsequent updates itself using the Dataverse SDK.
+> **Assembly** mode has no such restriction — the `pluginassembly` record is created automatically
+> on first deploy.
 
 **Examples:**
 
@@ -419,7 +443,7 @@ dvx plugin sync --project ./src/MyPlugin/MyPlugin.csproj --dry-run
 
 ### plugin deploy
 
-> Build the project and push the plugin package to Dataverse. Does not touch step registrations.
+> Build the project and deploy the plugin to Dataverse — the NuGet package, or the bare assembly with `--plugin-build-mode assembly`. Does not touch step registrations.
 
 ```
 dvx plugin deploy --project <path> [options]
@@ -433,6 +457,9 @@ dvx plugin deploy --project <path> [options]
 | `--url` | | env var / config | Dataverse environment URL |
 | `--client-id` | | env var / config | Service principal client ID |
 | `--client-secret` | | env var / config | Service principal client secret |
+| `--solution-unique-name` | | from config | Add the deployed assembly to this Dataverse solution (assembly mode) |
+| `--plugin-build-mode` | | from config | Deploy target: `package` (default) or `assembly`. Falls back to `pluginBuildMode` in config. See [Plugin deployment modes](#plugin-deployment-modes) |
+| `--dry-run` | | | Print what would happen without writing to Dataverse |
 | `--config` | | auto-discovered | Path to config file |
 | `--verbose` | | | Log upload details + inner exception details on error |
 
@@ -443,6 +470,12 @@ or when step registrations are managed separately.
 
 ```
 dvx plugin deploy --env uat --project ./src/MyPlugin/MyPlugin.csproj
+```
+
+Deploy a bare plugin assembly without a NuGet package:
+
+```
+dvx plugin deploy --project ./src/MyPlugin/MyPlugin.csproj --plugin-build-mode assembly
 ```
 
 ---
@@ -969,8 +1002,8 @@ dvx reads and writes the following Dataverse tables:
 | Table (logical name) | Purpose |
 |---|---|
 | `pluginpackage` | Stores the plugin package (nupkg) in its `content` column. Queried by `uniquename`, then updated with the new `.nupkg` content on deploy. |
-| `pluginassembly` | Child record created by Dataverse when it processes a plugin package. Queried after deploy to get the ID for step registration. Also queried by `--assembly-name` to download content bytes. |
-| `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. |
+| `pluginassembly` | The plugin assembly. In **package** mode this is a child record Dataverse creates when it processes a plugin package (queried after deploy to get the ID for step registration). In **assembly** mode dvx creates (or updates) it directly from the built `.dll`. Also queried by `--assembly-name` to download content bytes. |
+| `plugintype` | One record per plugin class. Queried to resolve class names to GUIDs for step registration. For packages Dataverse creates these from the `pluginpackage`; in **assembly** mode dvx creates the missing ones itself, mirroring the Plugin Registration Tool. |
 | `customapi` | Queried by `adopt` to identify Custom API registrations (by `plugintypeid` / `sdkmessageid`) so their steps are skipped rather than scaffolded as `[PluginStep]`. |
 | `sdkmessage` | Lookup table for message names (`Create`, `Update`, `Delete`, …). Loaded once and cached per run. |
 | `sdkmessagefilter` | Associates messages with entity types and indicates whether custom steps are allowed. |

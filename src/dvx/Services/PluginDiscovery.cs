@@ -15,6 +15,35 @@ namespace dvx.Services
 
         public List<PluginStepDefinition> Discover(string dllPath, bool verbose = false)
         {
+            var results = new List<PluginStepDefinition>();
+            ForEachPluginType(dllPath, type => DiscoverSteps(type, verbose, results));
+            return results;
+        }
+
+        /// <summary>
+        /// Returns the full names of every concrete <c>IPlugin</c> type in the assembly. Unlike
+        /// <see cref="Discover"/>, this includes types without <c>[PluginStep]</c> and Custom API
+        /// types — mirroring what the Plugin Registration Tool registers in <c>plugintype</c>.
+        /// </summary>
+        public static IReadOnlyList<string> DiscoverPluginTypeNames(string dllPath)
+        {
+            var names = new List<string>();
+            ForEachPluginType(dllPath, type =>
+            {
+                if (type.FullName is not null)
+                    names.Add(type.FullName);
+            });
+            return names;
+        }
+
+        /// <summary>
+        /// Loads <paramref name="dllPath"/> into a metadata-only context and invokes
+        /// <paramref name="action"/> for each concrete type that implements <c>IPlugin</c>. The
+        /// callback runs inside the <see cref="MetadataLoadContext"/> lifetime, so the reflected
+        /// types are only valid for its duration.
+        /// </summary>
+        private static void ForEachPluginType(string dllPath, Action<Type> action)
+        {
             var pluginDir = Path.GetDirectoryName(dllPath)!;
 
             // MetadataLoadContext lets us inspect a net462 DLL from a net8 host without executing code.
@@ -39,8 +68,6 @@ namespace dvx.Services
                 throw new InvalidOperationException($"Failed to load assembly '{dllPath}': {ex.Message}", ex);
             }
 
-            var results = new List<PluginStepDefinition>();
-
             foreach (var type in asm.GetTypes())
             {
                 if (type.IsAbstract || type.IsInterface)
@@ -49,54 +76,55 @@ namespace dvx.Services
                 if (!ImplementsIPlugin(type))
                     continue;
 
-                var stepAttrs = GetPluginStepAttributes(type);
-                // Skip Custom APIs — [CustomApi] takes precedence over any [PluginStep].
-                if (HasCustomApiAttribute(type))
-                {
-                    if (verbose)
-                    {
-                        Out.Dim($"  Skipping {type.FullName} — marked [CustomApi] (not an event plugin)");
-                    }
+                action(type);
+            }
+        }
 
-                    if (stepAttrs.Count > 0)
-                    {
-                        Out.Warn(
-                            $"  {type.FullName} - has [CustomApi] AND [PluginStep] attributes. It should have only one or the other");
-                    }
-
-                    continue;
-                }
-                
-                if (stepAttrs.Count == 0)
-                {
-                    logger.LogWarning(
-                        "IPlugin class {Type} has no [PluginStep] attribute — skipping.", type.FullName);
-                    continue;
-                }
-
+        private void DiscoverSteps(Type type, bool verbose, List<PluginStepDefinition> results)
+        {
+            var stepAttrs = GetPluginStepAttributes(type);
+            // Skip Custom APIs — [CustomApi] takes precedence over any [PluginStep].
+            if (HasCustomApiAttribute(type))
+            {
                 if (verbose)
-                    Out.Dim($"  Reflecting {type.FullName} — {stepAttrs.Count} [PluginStep] attribute(s)");
+                    Out.Dim($"  Skipping {type.FullName} — marked [CustomApi] (not an event plugin)");
 
-                foreach (var attr in stepAttrs)
+                if (stepAttrs.Count > 0)
                 {
-                    if (verbose)
-                        DumpAttributeToConsole(type.FullName!, attr);
-
-                    try
-                    {
-                        results.Add(BuildDefinition(type.FullName!, attr, verbose));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new InvalidOperationException(
-                            $"Failed to read [PluginStep] attribute on '{type.FullName}'.\n" +
-                            $"Attribute arguments at time of failure:\n{FormatAttributeDump(attr)}",
-                            ex);
-                    }
+                    Out.Warn(
+                        $"  {type.FullName} - has [CustomApi] AND [PluginStep] attributes. It should have only one or the other");
                 }
+
+                return;
             }
 
-            return results;
+            if (stepAttrs.Count == 0)
+            {
+                logger.LogWarning(
+                    "IPlugin class {Type} has no [PluginStep] attribute — skipping.", type.FullName);
+                return;
+            }
+
+            if (verbose)
+                Out.Dim($"  Reflecting {type.FullName} — {stepAttrs.Count} [PluginStep] attribute(s)");
+
+            foreach (var attr in stepAttrs)
+            {
+                if (verbose)
+                    DumpAttributeToConsole(type.FullName!, attr);
+
+                try
+                {
+                    results.Add(BuildDefinition(type.FullName!, attr, verbose));
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to read [PluginStep] attribute on '{type.FullName}'.\n" +
+                        $"Attribute arguments at time of failure:\n{FormatAttributeDump(attr)}",
+                        ex);
+                }
+            }
         }
 
         // ── Verbose console helpers ────────────────────────────────────────────

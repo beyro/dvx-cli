@@ -2,44 +2,63 @@ using System.Diagnostics;
 
 namespace dvx.Services
 {
-    public record BuildResult(string NupkgPath, string DllPath);
+    public record BuildResult(string? NupkgPath, string DllPath);
 
     public class ProjectBuilder
     {
         /// <summary>
-        /// Runs <c>dotnet build</c> on the given .csproj (Release config).
-        /// Plugin package projects created by <c>pac plugin init</c> emit a <c>.nupkg</c>
-        /// alongside the DLL as part of the standard build — no separate pack step needed.
-        /// Returns paths to both files for upload and reflection-based step discovery.
+        /// Runs <c>dotnet build</c> on the given .csproj (Release config) and returns the emitted
+        /// artifact paths. Plugin package projects created by <c>pac plugin init</c> emit a
+        /// <c>.nupkg</c> alongside the DLL as part of the standard build — no separate pack step
+        /// needed. Throws when no <c>.nupkg</c> is produced (this is the Package-mode path).
         /// </summary>
         public BuildResult Build(string projectPath)
         {
-            if (!File.Exists(projectPath))
-                throw new FileNotFoundException($"Project file not found: '{projectPath}'", projectPath);
-
-            RunDotnet($"build \"{projectPath}\" --configuration Release --nologo");
+            EnsureProjectExists(projectPath);
+            RunBuild(projectPath);
 
             return new BuildResult(FindNupkg(projectPath), FindBuiltDll(projectPath));
         }
 
-        private static string FindNupkg(string projectPath)
+        /// <summary>
+        /// Runs <c>dotnet build</c> (Release config) and returns the DLL, tolerating projects that
+        /// emit no <c>.nupkg</c> (bare plugin assemblies deployed straight to <c>pluginassembly</c>).
+        /// The <c>.nupkg</c> path is null when the project does not produce one.
+        /// </summary>
+        public BuildResult BuildAllowingMissingPackage(string projectPath)
         {
-            var projectDir  = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
-            var projectName = Path.GetFileNameWithoutExtension(projectPath);
-            var releaseDir  = Path.Combine(projectDir, "bin", "Release");
+            EnsureProjectExists(projectPath);
+            RunBuild(projectPath);
 
-            if (!Directory.Exists(releaseDir))
-                throw new InvalidOperationException(
-                    $"Build output directory not found: '{releaseDir}'. " +
-                    "Ensure the project built successfully.");
+            return new BuildResult(FindNupkgOrNull(projectPath), FindBuiltDll(projectPath));
+        }
 
-            var candidates = Directory.GetFiles(releaseDir, "*.nupkg", SearchOption.AllDirectories);
+        private static void EnsureProjectExists(string projectPath)
+        {
+            if (!File.Exists(projectPath))
+                throw new FileNotFoundException($"Project file not found: '{projectPath}'", projectPath);
+        }
 
-            if (candidates.Length == 0)
-                throw new InvalidOperationException(
-                    $"No .nupkg found under '{releaseDir}'. " +
+        /// <summary>Runs the Release build. Overridable so tests can exercise artifact discovery
+        /// without invoking the real <c>dotnet</c> process.</summary>
+        protected virtual void RunBuild(string projectPath)
+            => RunDotnet($"build \"{projectPath}\" --configuration Release --nologo");
+
+        private static string FindNupkg(string projectPath)
+            => FindNupkgOrNull(projectPath)
+               ?? throw new InvalidOperationException(
+                    $"No .nupkg found under '{ReleaseDirectory(projectPath)}'. " +
                     "Ensure the project is a Dataverse plugin package project created with 'pac plugin init'. " +
                     "The build should automatically emit a .nupkg alongside the DLL.");
+
+        private static string? FindNupkgOrNull(string projectPath)
+        {
+            var releaseDir  = ReleaseDirectory(projectPath);
+            var projectName = Path.GetFileNameWithoutExtension(projectPath);
+
+            var candidates = Directory.GetFiles(releaseDir, "*.nupkg", SearchOption.AllDirectories);
+            if (candidates.Length == 0)
+                return null;
 
             // Prefer the nupkg whose versioned stem starts with the project name, e.g.
             // MyPlugin.1.0.0.nupkg → stem "MyPlugin.1.0.0" starts with "MyPlugin".
@@ -57,14 +76,8 @@ namespace dvx.Services
         /// </summary>
         private static string FindBuiltDll(string projectPath)
         {
-            var projectDir  = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
+            var releaseDir  = ReleaseDirectory(projectPath);
             var projectName = Path.GetFileNameWithoutExtension(projectPath);
-            var releaseDir  = Path.Combine(projectDir, "bin", "Release");
-
-            if (!Directory.Exists(releaseDir))
-                throw new InvalidOperationException(
-                    $"Build output directory not found: '{releaseDir}'. " +
-                    "Ensure the project built successfully.");
 
             var candidates = Directory.GetFiles(releaseDir, $"{projectName}.dll", SearchOption.AllDirectories);
 
@@ -75,6 +88,19 @@ namespace dvx.Services
 
             // Single-targeted plugin projects produce exactly one DLL; take it.
             return candidates[0];
+        }
+
+        private static string ReleaseDirectory(string projectPath)
+        {
+            var projectDir = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
+            var releaseDir = Path.Combine(projectDir, "bin", "Release");
+
+            if (!Directory.Exists(releaseDir))
+                throw new InvalidOperationException(
+                    $"Build output directory not found: '{releaseDir}'. " +
+                    "Ensure the project built successfully.");
+
+            return releaseDir;
         }
 
         private static void RunDotnet(string args)
