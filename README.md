@@ -41,7 +41,7 @@ Commands are grouped by artifact type:
 
 | Requirement | Notes |
 |---|---|
-| [.NET 8 SDK](https://dotnet.microsoft.com/download) | Runtime for dvx itself |
+| [.NET 9 SDK](https://dotnet.microsoft.com/download) | Runtime for dvx itself |
 | Dataverse service principal | ClientId + ClientSecret with the **Dynamics CRM System Administrator** or other role with privileges allowing plugin / web-resource deployment. For local development you can instead sign in through the browser — see [Interactive login](#interactive-login-local-development) |
 
 
