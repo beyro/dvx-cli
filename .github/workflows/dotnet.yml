@@ -59,7 +59,16 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       shell: powershell
       run: |
+        $ErrorActionPreference = 'Stop'
+
         ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"beyro_dvx-cli" /o:"beyro" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" /d:sonar.coverage.exclusions="src/dvx/Commands/*Command.cs"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
         dotnet build
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
         dotnet test src/dvx.Tests/dvx.Tests.csproj --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory TestResults
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
         ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
