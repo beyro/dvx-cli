@@ -1,0 +1,53 @@
+# Publishes the dvx.cli NuGet package when a version tag (e.g. v1.11.0) is pushed.
+# Requires a repository secret named NUGET_API_KEY.
+
+name: Publish to NuGet
+
+on:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    # Fail fast if the pushed tag and the project version have drifted apart.
+    - name: Verify tag matches project version
+      shell: pwsh
+      run: |
+        $tag = $env:GITHUB_REF_NAME -replace '^v', ''
+        [xml]$csproj = Get-Content src/dvx/dvx.csproj
+        $version = $csproj.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+        Write-Host "Tag version:     $tag"
+        Write-Host "Project version: $version"
+        if ($tag -ne $version) {
+          Write-Error "Tag $env:GITHUB_REF_NAME does not match <Version>$version</Version> in src/dvx/dvx.csproj"
+          exit 1
+        }
+
+    - name: Restore
+      run: dotnet restore
+
+    - name: Test
+      run: dotnet test --verbosity normal
+
+    - name: Pack
+      run: dotnet pack src/dvx/dvx.csproj -c Release -o out
+
+    - name: Push to NuGet
+      run: >
+        dotnet nuget push out/*.nupkg
+        --api-key ${{ secrets.NUGET_API_KEY }}
+        --source https://api.nuget.org/v3/index.json
+        --skip-duplicate
