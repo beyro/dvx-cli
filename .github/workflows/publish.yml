@@ -20,7 +20,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
 
     # Fail fast if the pushed tag and the project version have drifted apart.
     - name: Verify tag matches project version

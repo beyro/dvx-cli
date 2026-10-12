@@ -41,7 +41,7 @@ Commands are grouped by artifact type:
 
 | Requirement | Notes |
 |---|---|
-| [.NET 9 SDK](https://dotnet.microsoft.com/download) | Runtime for dvx itself |
+| [.NET 10 SDK](https://dotnet.microsoft.com/download) | Runtime for dvx itself |
 | Dataverse service principal | ClientId + ClientSecret with the **Dynamics CRM System Administrator** or other role with privileges allowing plugin / web-resource deployment. For local development you can instead sign in through the browser — see [Interactive login](#interactive-login-local-development) |
 
 
@@ -1020,12 +1020,12 @@ dvx reads and writes the following Dataverse tables:
 ```
 PluginRegistrationTool/
 ├── src/
-│   ├── dvx.PluginAttributes/        # netstandard2.0 NuGet package
+│   ├── dvx.PluginAttributes/        # net462;net471;net10.0 NuGet package
 │   │   ├── PluginStepAttribute.cs         # [PluginStep] attribute with all config
 │   │   ├── CustomApiAttribute.cs          # [CustomApi] marker — excludes Custom API impls from discovery
 │   │   ├── Stage.cs                       # PreValidation / PreOperation / PostOperation
 │   │   └── dvx.PluginAttributes.csproj
-│   ├── dvx/                          # net8 CLI tool
+│   ├── dvx/                          # net10 CLI tool
 │   │   ├── Commands/
 │   │   │   ├── DeployCommand.cs           # dvx plugin deploy
 │   │   │   ├── RegisterCommand.cs         # dvx plugin register
