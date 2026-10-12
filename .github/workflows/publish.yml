@@ -20,7 +20,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
 
     # Fail fast if the pushed tag and the project version have drifted apart.
     - name: Verify tag matches project version
@@ -42,12 +42,12 @@ jobs:
     - name: Test
       run: dotnet test --verbosity normal
 
-    - name: Pack
-      run: dotnet pack src/dvx/dvx.csproj -c Release -o out
+    - name: Build
+      run: dotnet build -c Release
 
     - name: Push to NuGet
       run: >
-        dotnet nuget push out/*.nupkg
+        dotnet nuget push src/dvx/bin/Release/*.nupkg
         --api-key ${{ secrets.NUGET_API_KEY }}
         --source https://api.nuget.org/v3/index.json
         --skip-duplicate
