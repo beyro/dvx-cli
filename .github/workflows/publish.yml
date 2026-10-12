@@ -42,12 +42,12 @@ jobs:
     - name: Test
       run: dotnet test --verbosity normal
 
-    - name: Pack
-      run: dotnet pack src/dvx/dvx.csproj -c Release -o out
+    - name: Build
+      run: dotnet build -c Release
 
     - name: Push to NuGet
       run: >
-        dotnet nuget push out/*.nupkg
+        dotnet nuget push src/dvx/bin/Release/*.nupkg
         --api-key ${{ secrets.NUGET_API_KEY }}
         --source https://api.nuget.org/v3/index.json
         --skip-duplicate
