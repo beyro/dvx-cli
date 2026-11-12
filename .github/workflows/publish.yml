@@ -46,8 +46,7 @@ jobs:
       run: dotnet build -c Release
 
     - name: Push to NuGet
-      run: >
-        dotnet nuget push src/dvx/bin/Release/*.nupkg
-        --api-key ${{ secrets.NUGET_API_KEY }}
-        --source https://api.nuget.org/v3/index.json
-        --skip-duplicate
+      shell: pwsh
+      run: |
+        $pkg = Get-ChildItem src/dvx/bin/Release/*.nupkg | Select-Object -First 1 -ExpandProperty FullName
+        dotnet nuget push $pkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
