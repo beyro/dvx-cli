@@ -1,5 +1,6 @@
 # Publishes the dvx.cli NuGet package when a version tag (e.g. v1.11.0) is pushed.
-# Requires a repository secret named NUGET_API_KEY.
+# Uses NuGet Trusted Publishing: a GitHub OIDC token is exchanged for a short-lived
+# API key, so no long-lived NuGet secret is stored in the repository.
 
 name: Publish to NuGet
 
@@ -13,6 +14,7 @@ jobs:
 
     permissions:
       contents: read
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
@@ -45,8 +47,16 @@ jobs:
     - name: Build
       run: dotnet build -c Release
 
+    # The temporary key lasts one hour and each OIDC token yields one key,
+    # so request it immediately before pushing.
+    - name: NuGet login (OIDC -> temp API key)
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: byronmatus
+
     - name: Push to NuGet
       shell: pwsh
       run: |
         $pkg = Get-ChildItem src/dvx/bin/Release/*.nupkg | Select-Object -First 1 -ExpandProperty FullName
-        dotnet nuget push $pkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        dotnet nuget push $pkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
